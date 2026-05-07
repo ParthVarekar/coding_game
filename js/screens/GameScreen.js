@@ -7,6 +7,7 @@
 import { Events } from '../utils/EventBus.js';
 import { CodeEditor } from '../editor/CodeEditor.js';
 import { PythonRunner } from '../editor/PythonRunner.js';
+import { Renderer } from '../engine/Renderer.js';
 
 export class GameScreen {
     constructor(container, eventBus, gameState, audioManager, toastManager) {
@@ -18,6 +19,7 @@ export class GameScreen {
         this.el = null;
         this.codeEditor = new CodeEditor(container, eventBus, gameState);
         this.pythonRunner = new PythonRunner(eventBus);
+        this.renderer = null;
         this._codingStartTime = null;
     }
 
@@ -33,6 +35,7 @@ export class GameScreen {
     }
 
     hide() {
+        if (this.renderer) this.renderer.destroy();
         if (this.codeEditor) this.codeEditor.destroy();
         if (this.el) {
             this.el.classList.remove('active');
@@ -75,20 +78,14 @@ export class GameScreen {
                 <!-- Left: Game World Panel -->
                 <div class="game-panel" id="game-world-panel">
                     <div class="panel-header">
-                        <span class="panel-tab active">🖥 Terminal</span>
+                        <span class="panel-tab active" id="game-tab">🌐 Supply Depot Alpha</span>
                     </div>
-                    <div class="game-world-content" id="game-world-content">
-                        <div class="terminal-welcome" id="terminal-welcome">
-                            <div class="terminal-line" style="color:var(--cyan);">NEXUS-AI SYSTEMS TERMINAL v0.1.0</div>
-                            <div class="terminal-line" style="color:var(--text-muted);">────────────────────────────────────</div>
-                            <div class="terminal-line">Welcome, <span style="color:var(--cyan);">${this.gameState.data.player.name}</span>.</div>
-                            <div class="terminal-line">You are stationed at <span style="color:var(--purple);">Supply Depot Alpha, Sector 7</span>.</div>
-                            <div class="terminal-line" style="color:var(--text-muted);margin-top:var(--sp-3);">The facility's automated systems have gone offline.</div>
-                            <div class="terminal-line" style="color:var(--text-muted);">Your mission: restore operations using Python.</div>
-                            <div class="terminal-line" style="margin-top:var(--sp-4);color:var(--success);">▸ Try writing some Python in the editor on the right.</div>
-                            <div class="terminal-line" style="color:var(--success);">▸ Press <span style="color:var(--cyan);font-family:var(--font-mono);">Ctrl+Enter</span> or click <span style="color:var(--cyan);">▶ Run</span> to execute.</div>
-                            <div class="terminal-line blink" style="margin-top:var(--sp-4);color:var(--cyan);">_</div>
-                        </div>
+                    <div class="game-world-content" id="game-world-container" style="padding:0; overflow:hidden;">
+                        <!-- Canvas will be injected here -->
+                    </div>
+                    <!-- Overlay for interaction prompts -->
+                    <div id="interaction-prompt" style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:var(--cyan); padding:8px 16px; border:1px solid var(--cyan); border-radius:4px; font-family:var(--font-mono); font-size:0.9rem; pointer-events:none; opacity:0; transition:opacity 0.2s;">
+                        Press [E] to Inspect
                     </div>
                 </div>
 
@@ -158,6 +155,11 @@ export class GameScreen {
             }
             this._appendConsole('Failed to load Python: ' + err.message, 'error');
         }
+
+        // Init Game Renderer
+        this.renderer = new Renderer('game-world-container', this.eventBus);
+        await this.renderer.init();
+        this.renderer.start();
     }
 
     _bindEvents() {
@@ -191,6 +193,45 @@ export class GameScreen {
         this.eventBus.on(Events.XP_GAINED, () => this._updateHUD());
         this.eventBus.on(Events.MEGAJOULES_CHANGED, () => this._updateHUD());
         this.eventBus.on(Events.LEVEL_UP, () => this._updateHUD());
+
+        // Game World Interaction Listeners
+        const promptEl = this.el.querySelector('#interaction-prompt');
+        this.eventBus.on('SHOW_PROMPT', ({ text }) => {
+            if (promptEl) {
+                promptEl.textContent = text;
+                promptEl.style.opacity = '1';
+            }
+        });
+        this.eventBus.on('HIDE_PROMPT', () => {
+            if (promptEl) promptEl.style.opacity = '0';
+        });
+        this.eventBus.on('INTERACT', ({ entity }) => {
+            this._handleInteraction(entity);
+        });
+
+        // Editor focus tracking for InputManager
+        const editorContainer = this.el.querySelector('#editor-container');
+        editorContainer?.addEventListener('focusin', () => this.eventBus.emit(Events.IDE_FOCUSED));
+        editorContainer?.addEventListener('focusout', () => this.eventBus.emit(Events.IDE_BLURRED));
+    }
+
+    _handleInteraction(entity) {
+        if (entity.type === 'terminal' && !entity.isRepaired) {
+            this.audio.playSFX('type');
+            this.codeEditor.setCode(`# Challenge: Fix the terminal power loop
+# The terminal needs exactly 10 power units to reboot.
+# Fix the loop below to print numbers 1 through 10.
+
+power = 0
+for i in range(5):
+    power += 1
+    print(f"Power level: {power}")
+`);
+            this.codeEditor.focus();
+            this._appendConsole(`[SYSTEM] Accessing broken terminal ${entity.challengeId}...`, 'info');
+        } else if (entity.type === 'terminal' && entity.isRepaired) {
+            this._appendConsole(`[SYSTEM] Terminal is fully operational.`, 'success');
+        }
     }
 
     async _runCode(code) {
@@ -223,10 +264,22 @@ export class GameScreen {
             }
             this._appendConsole(`⏱ ${result.executionTime.toFixed(1)}ms`, 'muted');
 
-            // Award XP for successful execution
-            const xpAmount = 10;
-            this.gameState.addXP(xpAmount, 'Code executed successfully');
-            this.gameState.addMegajoules(5);
+            // Challenge validation logic (hardcoded for Prototype Phase 3)
+            const code = this.codeEditor.getCode();
+            if (code.includes('range(1, 11)') || code.includes('range(10)') && result.output.includes('Power level: 10')) {
+                const term = this.renderer.entities.interactables.find(e => e.challengeId === 'challenge_1');
+                if (term && !term.isRepaired) {
+                    term.isRepaired = true;
+                    this.renderer.camera.shake(5, 300); // Shake on success
+                    this._appendConsole('[SYSTEM] Power loop restored. Terminal online.', 'success');
+                    this.gameState.addXP(100, 'Terminal Repaired');
+                    this.gameState.addMegajoules(50);
+                }
+            } else {
+                // Regular execution rewards
+                this.gameState.addXP(10, 'Code executed');
+                this.gameState.addMegajoules(5);
+            }
 
             // Check first code badge
             if (!this.gameState.hasBadge('first_code')) {
