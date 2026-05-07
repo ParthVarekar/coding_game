@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Nexus-AI — An immersive game-based learning environment for Python programming and Artificial Intelligence engineering.">
+    <meta name="theme-color" content="#06060c">
+    <title>Nexus-AI | Learn Python & AI Through Play</title>
+    <link rel="stylesheet" href="css/index.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+    <!-- Animated star background -->
+    <canvas id="star-canvas" aria-hidden="true"></canvas>
+
+    <!-- Subtle CRT scanline overlay -->
+    <div class="scanline-overlay" aria-hidden="true"></div>
+
+    <!-- Toast notification container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Main application root -->
+    <div id="app">
+        <!-- Screens are injected dynamically by ScreenManager -->
+    </div>
+
+    <!-- Entry point -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
