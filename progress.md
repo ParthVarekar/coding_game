@@ -232,9 +232,36 @@
 ### Git Commit
 `55bed9f` — "Phase 5: Stealth Assessment Teacher Dashboard Overlay with Telemetry Analysis"
 
+## Phase 6: Curriculum Integration ✅
+**Date:** 2026-05-07
+**Status:** COMPLETE
+
+### What was built:
+
+#### JSON Curriculum Engine
+- `data/curriculum.json` — Decoupled challenge data into a scalable schema containing dialogues, default code, hints, and expected AST triggers.
+- `js/utils/CurriculumLoader.js` — Fetches and manages the JSON state, exposing it to the game.
+- Created 3 structured challenges:
+  1. **Variables**: Assigning exactly 50 to `fusion_cores`.
+  2. **Loops**: Fixing a range parameter to power a loop exactly 10 times.
+  3. **Conditionals**: Using `if/else` to manage `reactor_temp`.
+
+#### Dynamic Visual Feedback
+- Overhauled `NarrativeEngine.js` to process the JSON schema directly.
+- Added a new `isSparking` visual state to `Interactable` entities. When a user submits code that fails validation (either a syntax error or triggering a stealth logic flaw), the terminal immediately visually flickers and emits procedural canvas lightning sparks *before* the Bot Buddy chimes in, providing visceral, immediate game-world feedback.
+
+### Verification Results
+- ✅ Game successfully parses `curriculum.json` and loads 3 distinct broken terminals on the map.
+- ✅ Interacting with a terminal dynamically populates the CodeMirror editor with the correct challenge context.
+- ✅ Submitting a logic error (e.g., `fusion_cores = 10`) immediately causes the terminal to spark and triggers the correct Bot Buddy hint.
+- ✅ Successful code repairs the terminal, turning it solid green.
+
+### Git Commit
+`ed6953d` — "Phase 6: Curriculum Integration with JSON loader, dynamic terminals, and visual feedback"
+
 ---
 
-## Next Up: Development Phase 6 — Curriculum Integration
-- Implement a robust JSON-based curriculum loader.
-- Author 3 structured Python challenges (Variables, Loops, Conditionals) that map to specific terminals in the game world.
-- Ensure the CodeEditor dynamically loads instructions based on the curriculum schema.
+## Next Up: Development Phase 7 — Polish & Handover
+- Final UI/UX review of the application.
+- Comprehensive bug fixing and code documentation.
+- Compile final assets.

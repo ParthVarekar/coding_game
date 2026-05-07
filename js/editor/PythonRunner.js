@@ -75,6 +75,17 @@ export class PythonRunner {
             };
         }
 
+        if (!code || code.trim() === '') {
+            return {
+                success: false,
+                output: '',
+                error: 'SyntaxError: unexpected EOF while parsing (Code is empty)',
+                errorType: 'syntax',
+                errorLine: 1,
+                executionTime: 0,
+            };
+        }
+
         const startTime = performance.now();
 
         // Set up stdout/stderr capture

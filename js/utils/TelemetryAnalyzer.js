@@ -1,14 +1,28 @@
 /**
  * TelemetryAnalyzer — Processes raw GameState stealth assessment data into
  * actionable, pedagogical insights for the Teacher Dashboard.
+ * 
+ * This module follows data design best practices by providing "Interpretive Support"
+ * rather than just raw telemetry numbers, helping educators make immediate decisions.
  */
 export class TelemetryAnalyzer {
+    /**
+     * @param {Object} gameState - Reference to the global GameState manager.
+     */
     constructor(gameState) {
         this.gameState = gameState;
     }
 
     /**
-     * Generate a comprehensive insight report based on current data.
+     * Generates a comprehensive insight report based on current stealth assessment data.
+     * Evaluates error distributions (Syntax vs Logic) and time-on-task to calculate
+     * the student's Perseverance Status and provide actionable Next Steps.
+     * 
+     * @returns {Object} An analyzed data object containing:
+     *   - overview: Basic engagement metrics (submissions, time, success rate)
+     *   - distribution: Percentages of error types
+     *   - perseverance: Calculated emotional/engagement state (e.g., 'Productive Struggle')
+     *   - interpretive: Narrative insights and recommended pedagogical next steps
      */
     analyze() {
         const d = this.gameState.data.stealthAssessment;

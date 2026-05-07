@@ -2,6 +2,13 @@
  * NarrativeEngine — Orchestrates quests, dialogue, and Bot Buddy's AI mentoring.
  * Listens to game events and provides heuristic feedback on Python code.
  */
+/**
+ * NarrativeEngine — Orchestrates quest progression, dialogue, and code evaluation.
+ * 
+ * This engine acts as the "Heuristic AI Mentor". It intercepts code execution events,
+ * validates against the curriculum schema (AST regex / output), and triggers
+ * immediate visual feedback (e.g., terminal sparking) and dialogue hints.
+ */
 import { Events } from '../utils/EventBus.js';
 import { DialogueBox } from '../ui/DialogueBox.js';
 
@@ -62,6 +69,13 @@ export class NarrativeEngine {
         });
     }
 
+    /**
+     * Validates a successful Pyodide execution against the active JSON challenge schema.
+     * Evaluates stealth triggers (logic flaws), AST regex constraints, and expected output.
+     * Triggers visual feedback (`isSparking` / `isRepaired`) and Bot Buddy dialogue.
+     * 
+     * @param {Object} result - The code execution result from PythonRunner
+     */
     _validateChallenge(result) {
         const val = this.activeChallenge.validation;
         const code = document.querySelector('.cm-content')?.textContent || '';
