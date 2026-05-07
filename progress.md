@@ -205,9 +205,36 @@
 ### Git Commit
 `6434162` — "Phase 4: Narrative and Quest System with Bot Buddy mentor, Typewriter UI, and Heuristic AST Feedback"
 
+## Phase 5: Stealth Assessment Dashboard ✅
+**Date:** 2026-05-07
+**Status:** COMPLETE
+
+### What was built:
+
+#### Telemetry Analyzer
+- `js/utils/TelemetryAnalyzer.js` — The core logic module that translates raw data into pedagogical insights.
+  - Aggregates submissions, calculating success rates and tracking exact time-on-task.
+  - Generates a "Perseverance Status" metric (e.g., distinguishing between 'Productive Struggle' and 'Genuine Frustration' based on rapid guessing vs. thoughtful retry intervals).
+  - Determines the "Next Step" actionable insight by evaluating the ratio of Syntax vs. Logic errors.
+
+#### Dashboard Overlay
+- `js/screens/DashboardOverlay.js` — A hidden UI view triggered via the `Ctrl+Shift+D` keybind.
+  - Features a dark, glassmorphism UI layout split into three narrative sections: The Setup (Overview), The Highlight (Friction metrics), and The Next Step (Interpretive Support).
+  - Utilizes pure HTML/CSS Flexbox to render a dynamic error distribution bar chart (Syntax/Logic/Runtime) without external charting libraries.
+  - Includes a "Mock Data Injector" button specifically for testing the dynamic changes in the interpretive support panel.
+
+### Verification Results
+- ✅ Dashboard correctly toggles open and closed over the game using `Ctrl+Shift+D`.
+- ✅ The flexbox charts dynamically size based on the telemetry error distribution ratios.
+- ✅ The Interpretive Support panel actively changes recommendations based on the highest error category.
+- ✅ The "Perseverance" tracker successfully identifies rapid, high-error attempts as "Frustrated / Guessing".
+
+### Git Commit
+`55bed9f` — "Phase 5: Stealth Assessment Teacher Dashboard Overlay with Telemetry Analysis"
+
 ---
 
-## Next Up: Development Phase 5 — Stealth Assessment Dashboard
-- Implement the hidden teacher dashboard to visualize student telemetry.
-- Show aggregated metrics for syntax errors, logic flaws, and time-on-task.
-- Provide a simple UI overlay accessible via a secret keybind (e.g., `Ctrl+Shift+D`).
+## Next Up: Development Phase 6 — Curriculum Integration
+- Implement a robust JSON-based curriculum loader.
+- Author 3 structured Python challenges (Variables, Loops, Conditionals) that map to specific terminals in the game world.
+- Ensure the CodeEditor dynamically loads instructions based on the curriculum schema.

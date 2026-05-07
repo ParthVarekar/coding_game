@@ -1,0 +1,78 @@
+{
+  "challenges": [
+    {
+      "id": "challenge_1",
+      "title": "Inventory Variables",
+      "type": "variables",
+      "dialogueIntro": [
+        {"name": "Bot Buddy", "text": "This terminal controls the drone assembly bay.", "portrait": "🤖"},
+        {"name": "Bot Buddy", "text": "It needs to log the depot's resources. Create a variable called 'fusion_cores' and set it to 50.", "portrait": "🤖"}
+      ],
+      "defaultCode": "# Create the 'fusion_cores' variable below\n# Example: variable_name = value\n\n",
+      "validation": {
+        "expectedOutput": null,
+        "astRegex": "fusion_cores\\s*=\\s*50",
+        "stealthTriggers": {
+          "wrongValue": "fusion_cores\\s*=\\s*(?!50)\\d+",
+          "misspelled": "fusion_core\\s*="
+        }
+      },
+      "hints": {
+        "wrongValue": "Check your value! We need exactly 50 fusion cores.",
+        "misspelled": "Almost! Make sure the variable is named exactly 'fusion_cores' with an 's'."
+      },
+      "visualFeedback": {
+        "success": "terminal_green",
+        "failure": "terminal_spark"
+      }
+    },
+    {
+      "id": "challenge_2",
+      "title": "Power Loops",
+      "type": "loops",
+      "dialogueIntro": [
+        {"name": "Bot Buddy", "text": "Oh no, the main power loop is broken!", "portrait": "🤖"},
+        {"name": "Bot Buddy", "text": "It needs exactly 10 power units to boot. Can you write a loop that prints exactly 'Power level: 10' at the end?", "portrait": "🤖"}
+      ],
+      "defaultCode": "# The terminal needs exactly 10 power units to reboot.\n# Fix the loop below to run 10 times.\n\npower = 0\nfor i in range(5):\n    power += 1\n    print(f\"Power level: {power}\")\n",
+      "validation": {
+        "expectedOutput": "Power level: 10",
+        "astRegex": "range\\(\\s*10\\s*\\)",
+        "stealthTriggers": {
+          "range5": "range\\(\\s*5\\s*\\)"
+        }
+      },
+      "hints": {
+        "range5": "Your loop structure is perfect, but look closely at the range! It's only running 5 times instead of 10."
+      },
+      "visualFeedback": {
+        "success": "terminal_green",
+        "failure": "terminal_spark"
+      }
+    },
+    {
+      "id": "challenge_3",
+      "title": "Coolant Conditionals",
+      "type": "conditionals",
+      "dialogueIntro": [
+        {"name": "Bot Buddy", "text": "The reactor coolant terminal is locked.", "portrait": "🤖"},
+        {"name": "Bot Buddy", "text": "Write an if/else statement. If reactor_temp is greater than 100, print 'CRITICAL'. Else, print 'STABLE'.", "portrait": "🤖"}
+      ],
+      "defaultCode": "reactor_temp = 150\n\n# Write your if/else statement below:\n\n",
+      "validation": {
+        "expectedOutput": "CRITICAL",
+        "astRegex": "if\\s+reactor_temp\\s*>\\s*100\\s*:",
+        "stealthTriggers": {
+          "wrongCondition": "if\\s+reactor_temp\\s*<\\s*100\\s*:"
+        }
+      },
+      "hints": {
+        "wrongCondition": "Check your condition! We need to know if the temp is GREATER than 100."
+      },
+      "visualFeedback": {
+        "success": "terminal_green",
+        "failure": "terminal_spark"
+      }
+    }
+  ]
+}

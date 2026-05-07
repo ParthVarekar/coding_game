@@ -9,6 +9,7 @@ import { CodeEditor } from '../editor/CodeEditor.js';
 import { PythonRunner } from '../editor/PythonRunner.js';
 import { Renderer } from '../engine/Renderer.js';
 import { NarrativeEngine } from '../engine/NarrativeEngine.js';
+import { CurriculumLoader } from '../utils/CurriculumLoader.js';
 
 export class GameScreen {
     constructor(container, eventBus, gameState, audioManager, toastManager) {
@@ -20,6 +21,7 @@ export class GameScreen {
         this.el = null;
         this.codeEditor = new CodeEditor(container, eventBus, gameState);
         this.pythonRunner = new PythonRunner(eventBus);
+        this.curriculum = new CurriculumLoader();
         this.renderer = null;
         this.narrativeEngine = null;
         this._codingStartTime = null;
@@ -146,6 +148,9 @@ export class GameScreen {
             this._appendConsole('Failed to load code editor: ' + err.message, 'error');
         }
 
+        // Init Curriculum
+        await this.curriculum.init();
+
         // Init Pyodide
         const statusEl = this.el.querySelector('#pyodide-status');
         try {
@@ -176,7 +181,8 @@ export class GameScreen {
             this.gameState,
             this.audio,
             this.el.querySelector('#game-world-panel'),
-            this.renderer.entities.bot
+            this.renderer.entities.bot,
+            this.curriculum
         );
     }
 
@@ -236,15 +242,14 @@ export class GameScreen {
     _handleInteraction(entity) {
         if (entity.type === 'terminal' && !entity.isRepaired) {
             this.audio.playSFX('type');
-            this.codeEditor.setCode(`# Challenge: Fix the terminal power loop
-# The terminal needs exactly 10 power units to reboot.
-# Fix the loop below to print numbers 1 through 10.
-
-power = 0
-for i in range(5):
-    power += 1
-    print(f"Power level: {power}")
-`);
+            
+            const challenge = this.curriculum.getChallenge(entity.challengeId);
+            if (challenge) {
+                this.codeEditor.setCode(challenge.defaultCode);
+            } else {
+                this.codeEditor.setCode(`# Error: Challenge ${entity.challengeId} not found.`);
+            }
+            
             this.codeEditor.focus();
             this._appendConsole(`[SYSTEM] Accessing broken terminal ${entity.challengeId}...`, 'info');
         } else if (entity.type === 'terminal' && entity.isRepaired) {
@@ -282,22 +287,10 @@ for i in range(5):
             }
             this._appendConsole(`⏱ ${result.executionTime.toFixed(1)}ms`, 'muted');
 
-            // Challenge validation logic (hardcoded for Prototype Phase 3)
-            const code = this.codeEditor.getCode();
-            if (code.includes('range(1, 11)') || code.includes('range(10)') && result.output.includes('Power level: 10')) {
-                const term = this.renderer.entities.interactables.find(e => e.challengeId === 'challenge_1');
-                if (term && !term.isRepaired) {
-                    term.isRepaired = true;
-                    this.renderer.camera.shake(5, 300); // Shake on success
-                    this._appendConsole('[SYSTEM] Power loop restored. Terminal online.', 'success');
-                    this.gameState.addXP(100, 'Terminal Repaired');
-                    this.gameState.addMegajoules(50);
-                }
-            } else {
-                // Regular execution rewards
-                this.gameState.addXP(10, 'Code executed');
-                this.gameState.addMegajoules(5);
-            }
+            // Challenge validation is now handled fully by NarrativeEngine,
+            // but we still handle global rewards here
+            this.gameState.addXP(10, 'Code executed');
+            this.gameState.addMegajoules(5);
 
             // Check first code badge
             if (!this.gameState.hasBadge('first_code')) {

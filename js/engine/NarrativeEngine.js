@@ -6,16 +6,19 @@ import { Events } from '../utils/EventBus.js';
 import { DialogueBox } from '../ui/DialogueBox.js';
 
 export class NarrativeEngine {
-    constructor(eventBus, gameState, audio, container, botEntity) {
+    constructor(eventBus, gameState, audio, container, botEntity, curriculum) {
         this.eventBus = eventBus;
         this.gameState = gameState;
         this.audio = audio;
         this.bot = botEntity;
+        this.curriculum = curriculum;
         
         this.dialogueBox = new DialogueBox(container, audio, eventBus);
         this.questObjectiveEl = container.querySelector('#quest-objective');
         
-        this.currentQuest = null;
+        this.activeTerminal = null;
+        this.activeChallenge = null;
+        
         this._bindEvents();
     }
 
@@ -30,39 +33,104 @@ export class NarrativeEngine {
         setTimeout(() => this._startIntro(), 1000);
 
         this.eventBus.on('INTERACT', ({ entity }) => {
-            if (entity.challengeId === 'challenge_1' && !entity.isRepaired) {
-                this.bot.setEmotion('thinking');
-                this.setObjective('Fix the broken terminal');
-                this.dialogueBox.showSequence([
-                    { name: 'Bot Buddy', text: "Oh no, the main power loop is broken!", portrait: '🤖' },
-                    { name: 'Bot Buddy', text: "It needs exactly 10 power units to boot. Can you write a loop that runs 10 times?", portrait: '🤖' }
-                ]).then(() => {
-                    this.bot.setEmotion('happy');
-                });
+            if (entity.type === 'terminal' && !entity.isRepaired) {
+                const challenge = this.curriculum.getChallenge(entity.challengeId);
+                if (challenge) {
+                    this.activeTerminal = entity;
+                    this.activeChallenge = challenge;
+                    this.bot.setEmotion('thinking');
+                    this.setObjective(`Complete: ${challenge.title}`);
+                    
+                    this.dialogueBox.showSequence(challenge.dialogueIntro).then(() => {
+                        this.bot.setEmotion('happy');
+                    });
+                }
             }
         });
 
         // Heuristic AI Mentor logic
         this.eventBus.on(Events.CODE_SUBMITTED, (result) => {
+            if (!this.activeChallenge || !this.activeTerminal) return;
+
             if (result.success) {
-                // Check if challenge is completed (hardcoded for prototype)
-                if (result.output && result.output.includes('Power level: 10')) {
-                    this.bot.setEmotion('happy');
-                    this.setObjective('Standby for new orders');
-                    this.dialogueBox.showSequence([
-                        { name: 'Bot Buddy', text: "You did it! The terminal is rebooting!", color: 'var(--success)', portrait: '🤖' },
-                        { name: 'System', text: "Sector 7 power restored. Primary objective complete.", color: 'var(--purple)', portrait: 'SYSTEM' }
-                    ]);
-                } else {
-                    this.bot.setEmotion('thinking');
-                    this.dialogueBox.showSequence([
-                        { name: 'Bot Buddy', text: "Code ran successfully! But the terminal is still offline. Did you print 'Power level: 10'?", portrait: '🤖' }
-                    ]).then(() => this.bot.setEmotion('happy'));
-                }
+                this._validateChallenge(result);
             } else {
+                // If python execution completely failed
+                this.activeTerminal.isSparking = true;
                 this._handleCodeError(result);
             }
         });
+    }
+
+    _validateChallenge(result) {
+        const val = this.activeChallenge.validation;
+        const code = document.querySelector('.cm-content')?.textContent || '';
+        
+        // 1. Check stealth triggers (Logic flaws that run but are logically wrong)
+        if (val.stealthTriggers) {
+            for (const [key, regexStr] of Object.entries(val.stealthTriggers)) {
+                const regex = new RegExp(regexStr);
+                if (regex.test(code)) {
+                    // Logic flaw detected!
+                    this.activeTerminal.isSparking = true;
+                    this.bot.setEmotion('thinking');
+                    
+                    // Increment specific concept
+                    const concept = this.activeChallenge.type;
+                    this.gameState.data.stealthAssessment.concepts[concept] = (this.gameState.data.stealthAssessment.concepts[concept] || 0) + 1;
+                    this.gameState.save();
+
+                    const hint = this.activeChallenge.hints[key] || "Hmm, that logic doesn't look quite right.";
+                    this.dialogueBox.showSequence([{ name: 'Bot Buddy', text: hint, portrait: '🤖' }])
+                        .then(() => this.bot.setEmotion('happy'));
+                    return; // Stop validation
+                }
+            }
+        }
+
+        // 2. Check main AST Regex
+        let astPassed = true;
+        if (val.astRegex) {
+            const regex = new RegExp(val.astRegex);
+            astPassed = regex.test(code);
+        }
+
+        // 3. Check expected output
+        let outPassed = true;
+        if (val.expectedOutput) {
+            outPassed = result.output && result.output.includes(val.expectedOutput);
+        }
+
+        // Final Verification
+        if (astPassed && outPassed) {
+            // SUCCESS!
+            this.activeTerminal.isRepaired = true;
+            this.activeTerminal.isSparking = false;
+            
+            // Screen shake
+            this.eventBus.emit(Events.SCREEN_SHAKE, { intensity: 5, duration: 300 });
+
+            this.bot.setEmotion('happy');
+            this.setObjective('Standby for new orders');
+            this.dialogueBox.showSequence([
+                { name: 'Bot Buddy', text: "You did it! The terminal is rebooting!", color: 'var(--success)', portrait: '🤖' },
+                { name: 'System', text: `${this.activeChallenge.title} complete. Systems restored.`, color: 'var(--purple)', portrait: 'SYSTEM' }
+            ]);
+            
+            this.gameState.addXP(100, `${this.activeChallenge.title} Completed`);
+            this.gameState.addMegajoules(50);
+            
+            this.activeChallenge = null;
+            this.activeTerminal = null;
+
+        } else {
+            // Ran but didn't pass requirements
+            this.activeTerminal.isSparking = true;
+            this.bot.setEmotion('thinking');
+            this.dialogueBox.showSequence([
+                { name: 'Bot Buddy', text: "Code ran successfully, but the terminal is still offline. Double-check the requirements!", portrait: '🤖' }
+            ]).then(() => this.bot.setEmotion('happy'));
+        }
     }
 
     _startIntro() {
@@ -103,18 +171,9 @@ export class NarrativeEngine {
                 feedback = "You have a NameError. Check your variable names!";
             }
         }
-        // Logic Error Heuristics (Targeted for the loop challenge)
+        // Logic Error Heuristics (Targeted fallback)
         else {
-            const code = document.querySelector('.cm-content')?.textContent || '';
-            if (code.includes('range(5)')) {
-                feedback = "Your loop structure is perfect, but look closely at the range! It's only running 5 times instead of 10.";
-                
-                // Track this specific logic error for stealth assessment
-                this.gameState.data.stealthAssessment.concepts.loops += 1;
-                this.gameState.save();
-            } else {
-                feedback = "That threw an error. Double check the line number in the console!";
-            }
+            feedback = "That threw an error. Double check the line number in the console!";
         }
 
         this.dialogueBox.showSequence([

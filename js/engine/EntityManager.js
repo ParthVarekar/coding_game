@@ -108,44 +108,73 @@ export class Player extends Entity {
 
 export class Interactable extends Entity {
     constructor(x, y, type, challengeId) {
-        super(x, y, 48, 48);
-        this.type = type; // 'terminal', 'door'
+        super(x, y, 32, 32);
+        this.type = type;
         this.challengeId = challengeId;
         this.isRepaired = false;
-        
-        this.pulseTime = Math.random() * Math.PI * 2;
+        this.isSparking = false;
+        this.sparkTime = 0;
     }
 
     update(dt) {
-        this.pulseTime += dt * 3;
+        if (this.isSparking) {
+            this.sparkTime += dt;
+            if (this.sparkTime > 1) { // Spark for 1 second
+                this.isSparking = false;
+                this.sparkTime = 0;
+            }
+        }
     }
 
     render(ctx) {
         ctx.save();
-        ctx.translate(this.x, this.y);
+        ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
 
-        if (this.type === 'terminal') {
-            // Terminal base
-            ctx.fillStyle = '#1a1a3a';
-            ctx.fillRect(0, 16, 48, 32);
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath();
+        ctx.ellipse(0, 16, 12, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Base
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(-16, -16, 32, 32);
+
+        // Screen
+        let screenColor = '#ef4444'; // Broken
+        let glowColor = 'rgba(239, 68, 68, 0.5)';
+        
+        if (this.isRepaired) {
+            screenColor = '#10b981'; // Repaired
+            glowColor = 'rgba(16, 185, 129, 0.5)';
+        } else if (this.isSparking) {
+            // Flicker rapidly
+            const flicker = Math.random() > 0.5 ? '#f59e0b' : '#fff';
+            screenColor = flicker;
+            glowColor = 'rgba(245, 158, 11, 0.8)';
             
-            // Screen
-            const screenColor = this.isRepaired ? '#22c55e' : '#ef4444';
-            ctx.fillStyle = screenColor;
-            
-            // Pulse effect if broken
-            if (!this.isRepaired) {
-                const alpha = (Math.sin(this.pulseTime) * 0.3 + 0.7).toFixed(2);
-                ctx.fillStyle = `rgba(239, 68, 68, ${alpha})`;
-                ctx.shadowColor = '#ef4444';
-                ctx.shadowBlur = 15;
-            } else {
-                ctx.shadowColor = '#22c55e';
-                ctx.shadowBlur = 10;
+            // Draw random spark lines
+            ctx.strokeStyle = '#fde047';
+            ctx.lineWidth = 2;
+            for(let i=0; i<3; i++) {
+                ctx.beginPath();
+                ctx.moveTo((Math.random()-0.5)*40, (Math.random()-0.5)*40 - 10);
+                ctx.lineTo((Math.random()-0.5)*40, (Math.random()-0.5)*40 - 10);
+                ctx.stroke();
             }
-            
-            ctx.fillRect(4, 0, 40, 24);
         }
+
+        ctx.fillStyle = screenColor;
+        ctx.shadowColor = screenColor;
+        ctx.shadowBlur = 15;
+        
+        // Pulse screen if broken but not sparking
+        if (!this.isRepaired && !this.isSparking) {
+            const pulse = (Math.sin(Date.now() / 200) + 1) / 2;
+            ctx.shadowBlur = 5 + pulse * 15;
+        }
+
+        ctx.fillRect(-12, -12, 24, 12);
 
         ctx.restore();
     }
@@ -258,8 +287,17 @@ export class EntityManager {
     }
 
     loadPrototypeEntities() {
-        // Add a broken terminal in the map
-        this.interactables.push(new Interactable(12 * 64 + 8, 6 * 64 + 8, 'terminal', 'challenge_1'));
+        // Add 3 broken terminals in the map for Phase 6
+        // Map is 20x15, tile size 64.
+        
+        // Terminal 1: Variables
+        this.interactables.push(new Interactable(8 * 64 + 8, 4 * 64 + 8, 'terminal', 'challenge_1'));
+        
+        // Terminal 2: Loops
+        this.interactables.push(new Interactable(12 * 64 + 8, 6 * 64 + 8, 'terminal', 'challenge_2'));
+        
+        // Terminal 3: Conditionals
+        this.interactables.push(new Interactable(4 * 64 + 8, 10 * 64 + 8, 'terminal', 'challenge_3'));
         
         // Reset player pos
         this.player.x = 3 * 64;
