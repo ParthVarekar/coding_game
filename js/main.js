@@ -12,6 +12,7 @@ import { MainMenu } from './screens/MainMenu.js';
 import { Settings } from './screens/Settings.js';
 import { BootScreen } from './screens/BootScreen.js';
 import { GameScreen } from './screens/GameScreen.js';
+import { DashboardOverlay } from './screens/DashboardOverlay.js';
 
 class NexusApp {
     constructor() {
@@ -47,8 +48,14 @@ class NexusApp {
         document.addEventListener('click', initAudio);
         document.addEventListener('keydown', initAudio);
 
-        // Show main menu
-        this._showScreen('mainMenu');
+        // Initialize Stealth Assessment Dashboard (Teacher View)
+        const dashboard = new DashboardOverlay(document.body, this.gameState);
+
+        // Start Boot Sequence
+        this.eventBus.emit(Events.SCREEN_CHANGE, { screen: 'boot' });
+
+        // Expose for easy testing
+        window.toggleTeacherDashboard = () => dashboard.toggle();
 
         console.log('[Nexus-AI] Initialized successfully.');
     }

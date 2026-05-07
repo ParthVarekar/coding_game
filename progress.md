@@ -168,8 +168,46 @@
 
 ---
 
-## Next Up: Development Phase 4 — Narrative & Quest System
-- Dialogue system (typewriter text boxes overlaying the game world, character portraits)
-- Quest tracker UI showing current objectives
-- "Bot Buddy" floating companion that follows the player and provides hints
-- Narrative scripting engine to trigger events when entering specific rooms
+## Phase 4: Narrative & Quest System ✅
+**Date:** 2026-05-07
+**Status:** COMPLETE
+
+### What was built:
+
+#### Narrative UI
+- `js/ui/DialogueBox.js` — Typewriter-style dialogue overlay
+  - Renders character names, portraits (using emojis for MVP), and types text character by character.
+  - Supports queuing multiple messages.
+  - Disables game movement logic automatically via existing EventBus/InputManager hooks while focused.
+- **Quest Tracker** added to the top right of the GameScreen to provide clear player objectives ("Investigate the red flashing terminal").
+
+#### Bot Buddy Entity
+- `js/engine/BotEntity.js` — The AI Mentor companion
+  - Floats dynamically above and behind the player using a smooth follow lerp.
+  - Procedurally drawn via Canvas API (spherical drone, antenna, hovering shadow).
+  - Features an emotional state engine (happy/cyan, thinking/purple, error/red) that changes based on code execution results.
+
+#### Heuristic AI Mentor
+- `js/engine/NarrativeEngine.js` — The core logic for quest progression and feedback.
+  - Listens to `CODE_SUBMITTED` events from Pyodide.
+  - **Syntax Checking**: Uses string matching to provide specific hints for `SyntaxError` (e.g., missing colons) and `IndentationError`.
+  - **Logic Checking**: Uses heuristic AST-like regex checks. If the player writes `range(5)` instead of `10`, the Bot intercepts the success state and gives a formative hint: "Your loop structure is perfect, but look closely at the range!"
+  - **Stealth Assessment Integration**: Hooks into the `GameState` stealth assessment counters. Catching the `range(5)` error specifically increments the player's `loops` struggle metric invisibly.
+
+### Verification Results
+- ✅ Bot Buddy successfully renders and follows the player.
+- ✅ Dialogue box opens at start and guides the player to the terminal.
+- ✅ Quest tracker updates when reaching the terminal.
+- ✅ Submitting a `SyntaxError` turns the Bot red and displays a syntax hint.
+- ✅ Submitting `range(5)` turns the Bot purple and provides the exact logic hint, while logging the stealth assessment metric.
+- ✅ Repairing the terminal successfully completes the quest.
+
+### Git Commit
+`6434162` — "Phase 4: Narrative and Quest System with Bot Buddy mentor, Typewriter UI, and Heuristic AST Feedback"
+
+---
+
+## Next Up: Development Phase 5 — Stealth Assessment Dashboard
+- Implement the hidden teacher dashboard to visualize student telemetry.
+- Show aggregated metrics for syntax errors, logic flaws, and time-on-task.
+- Provide a simple UI overlay accessible via a secret keybind (e.g., `Ctrl+Shift+D`).
