@@ -371,6 +371,15 @@ export class EntityManager {
         return null;
     }
 
+    /**
+     * Returns true if all terminal entities in the current map have been repaired.
+     */
+    areAllTerminalsRepaired() {
+        const terminals = this.interactables.filter(ent => ent.type === 'terminal');
+        if (terminals.length === 0) return true; // No terminals = auto-complete
+        return terminals.every(term => term.isRepaired);
+    }
+
     render(ctx, camera) {
         // Sort entities by Y position for proper pseudo-depth layering
         const renderList = [this.player, this.bot, ...this.interactables];

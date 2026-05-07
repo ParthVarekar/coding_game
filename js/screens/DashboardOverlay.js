@@ -1,6 +1,6 @@
 /**
  * DashboardOverlay — Hidden teacher view for Stealth Assessment telemetry.
- * Triggered via Ctrl+Shift+D.
+ * Triggered via Ctrl+Shift+X.
  */
 import { TelemetryAnalyzer } from '../utils/TelemetryAnalyzer.js';
 
@@ -18,7 +18,7 @@ export class DashboardOverlay {
     _bindKeys() {
         window.addEventListener('keydown', (e) => {
             // Ctrl + Shift + D (Using e.code for hardware key detection)
-            if (e.ctrlKey && e.shiftKey && e.code === 'KeyD') {
+            if (e.ctrlKey && e.shiftKey && e.code === 'KeyX') {
                 e.preventDefault();
                 console.log('[Dashboard] Toggle shortcut detected');
                 this.toggle();
@@ -53,7 +53,7 @@ export class DashboardOverlay {
             <div class="dashboard-panel">
                 <div class="dash-header">
                     <h2>👁️ STEALTH ASSESSMENT DASHBOARD</h2>
-                    <button class="btn" id="btn-close-dash" style="padding:var(--sp-2) var(--sp-3);">Close (Ctrl+Shift+D)</button>
+                    <button class="btn" id="btn-close-dash" style="padding:var(--sp-2) var(--sp-3);">Close (Ctrl+Shift+X)</button>
                 </div>
 
                 <div class="dash-grid">

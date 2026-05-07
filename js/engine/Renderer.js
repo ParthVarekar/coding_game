@@ -124,7 +124,15 @@ export class Renderer {
         // Handle interaction input
         if (nearby && (this.input.isJustPressed('e') || this.input.isJustPressed('enter'))) {
             if (nearby.type === 'portal') {
-                this.eventBus.emit(Events.MAP_TRANSITION, { targetMapId: nearby.targetMapId });
+                if (this.entities.areAllTerminalsRepaired()) {
+                    this.eventBus.emit(Events.MAP_TRANSITION, { targetMapId: nearby.targetMapId });
+                } else {
+                    this.eventBus.emit('SHOW_PROMPT', { 
+                        text: "ACCESS DENIED: Restore all terminals in this sector first.",
+                        isError: true 
+                    });
+                    this.eventBus.emit(Events.AUDIO_PLAY_SFX, 'error');
+                }
             } else {
                 this.eventBus.emit('INTERACT', { entity: nearby });
             }

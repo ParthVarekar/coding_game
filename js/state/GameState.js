@@ -116,16 +116,13 @@ function createDefaultState() {
         inventory: [],
 
         // Stealth assessment telemetry
-        telemetry: {
-            totalCodeSubmissions: 0,
-            successfulSubmissions: 0,
-            syntaxErrors: 0,
-            runtimeErrors: 0,
-            totalCodingTimeMs: 0,
+        stealthAssessment: {
+            submissions: { total: 0, successful: 0 },
+            errors: {},         // { "SyntaxError": count, etc. }
+            concepts: { loops: 0, variables: 0, conditionals: 0, math: 0 },
+            timeSpentMs: 0,
             challengeAttempts: {},  // { challengeId: attemptCount }
             challengeTimes: {},    // { challengeId: timeMs }
-            consecutiveSuccesses: 0,
-            longestStreak: 0,
         },
 
         // Settings
@@ -357,20 +354,16 @@ export class GameState {
      * @param {{ challengeId: string, success: boolean, errorType: string|null, timeMs: number }}
      */
     recordSubmission({ challengeId, success, errorType, timeMs }) {
-        const t = this.data.telemetry;
-        t.totalCodeSubmissions++;
+        const t = this.data.stealthAssessment;
+        t.submissions.total++;
 
         if (success) {
-            t.successfulSubmissions++;
-            t.consecutiveSuccesses++;
-            t.longestStreak = Math.max(t.longestStreak, t.consecutiveSuccesses);
-        } else {
-            t.consecutiveSuccesses = 0;
-            if (errorType === 'syntax') t.syntaxErrors++;
-            else if (errorType === 'runtime') t.runtimeErrors++;
+            t.submissions.successful++;
+        } else if (errorType) {
+            t.errors[errorType] = (t.errors[errorType] || 0) + 1;
         }
 
-        t.totalCodingTimeMs += timeMs;
+        t.timeSpentMs += timeMs;
 
         if (challengeId) {
             t.challengeAttempts[challengeId] = (t.challengeAttempts[challengeId] || 0) + 1;
@@ -387,12 +380,12 @@ export class GameState {
      * @returns {'easier'|'same'|'harder'}
      */
     getDifficultyRecommendation() {
-        const t = this.data.telemetry;
-        if (t.totalCodeSubmissions < 5) return 'same';
+        const t = this.data.stealthAssessment;
+        if (t.submissions.total < 5) return 'same';
 
-        const successRate = t.successfulSubmissions / t.totalCodeSubmissions;
+        const successRate = t.submissions.successful / t.submissions.total;
         if (successRate < 0.3) return 'easier';
-        if (successRate > 0.8 && t.consecutiveSuccesses >= 3) return 'harder';
+        if (successRate > 0.8) return 'harder';
         return 'same';
     }
 
