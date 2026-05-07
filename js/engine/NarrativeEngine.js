@@ -56,11 +56,11 @@ export class NarrativeEngine {
         });
 
         // Heuristic AI Mentor logic
-        this.eventBus.on(Events.CODE_SUBMITTED, (result) => {
+        this.eventBus.on(Events.CODE_SUBMITTED, ({ result, code }) => {
             if (!this.activeChallenge || !this.activeTerminal) return;
 
             if (result.success) {
-                this._validateChallenge(result);
+                this._validateChallenge(result, code);
             } else {
                 // If python execution completely failed
                 this.activeTerminal.isSparking = true;
@@ -75,16 +75,20 @@ export class NarrativeEngine {
      * Triggers visual feedback (`isSparking` / `isRepaired`) and Bot Buddy dialogue.
      * 
      * @param {Object} result - The code execution result from PythonRunner
+     * @param {string} code - The source code submitted
      */
-    _validateChallenge(result) {
+    _validateChallenge(result, code) {
         const val = this.activeChallenge.validation;
-        const code = document.querySelector('.cm-content')?.textContent || '';
         
+        // NUCLEAR FIX: Sanitize code to remove non-breaking spaces or weird characters
+        // that often cause Regex validation to fail in browser environments.
+        const sanitizedCode = code.replace(/[\u00A0\u1680​\u180e\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]/g, ' ');
+
         // 1. Check stealth triggers (Logic flaws that run but are logically wrong)
         if (val.stealthTriggers) {
             for (const [key, regexStr] of Object.entries(val.stealthTriggers)) {
-                const regex = new RegExp(regexStr);
-                if (regex.test(code)) {
+                const regex = new RegExp(regexStr, 'mi');
+                if (regex.test(sanitizedCode)) {
                     // Logic flaw detected!
                     this.activeTerminal.isSparking = true;
                     this.bot.setEmotion('thinking');
@@ -102,21 +106,51 @@ export class NarrativeEngine {
             }
         }
 
-        // 2. Check main AST Regex
+        // 2. Check main AST Regex (DEPRECATED - now fallback)
         let astPassed = true;
         if (val.astRegex) {
-            const regex = new RegExp(val.astRegex);
-            astPassed = regex.test(code);
+            const regex = new RegExp(val.astRegex, 'mi');
+            astPassed = regex.test(sanitizedCode);
+        }
+
+        // PILLAR 2: State-Based Validation
+        // This is much more robust than regex string matching
+        let statePassed = true;
+        if (val.state) {
+            statePassed = Object.entries(val.state).every(([varName, expectedValue]) => {
+                const actualValue = result.globals?.[varName];
+                
+                // Flexible comparison (supports strings like ">= 100", "== 50")
+                if (typeof expectedValue === 'string') {
+                    if (expectedValue.startsWith('>=')) {
+                        return actualValue >= parseFloat(expectedValue.slice(2));
+                    } else if (expectedValue.startsWith('<=')) {
+                        return actualValue <= parseFloat(expectedValue.slice(2));
+                    } else if (expectedValue.startsWith('>')) {
+                        return actualValue > parseFloat(expectedValue.slice(1));
+                    } else if (expectedValue.startsWith('<')) {
+                        return actualValue < parseFloat(expectedValue.slice(1));
+                    } else if (expectedValue.startsWith('==')) {
+                        return actualValue == expectedValue.slice(2).trim();
+                    }
+                }
+                
+                return actualValue == expectedValue;
+            });
         }
 
         // 3. Check expected output
         let outPassed = true;
         if (val.expectedOutput) {
-            outPassed = result.output && result.output.includes(val.expectedOutput);
+            const expected = val.expectedOutput.toLowerCase();
+            const actual = (result.output || "").toLowerCase();
+            outPassed = actual.includes(expected);
         }
 
-        // Final Verification
-        if (astPassed && outPassed) {
+        console.log(`[NarrativeEngine] Validation Result - AST: ${astPassed}, State: ${statePassed}, Output: ${outPassed}`);
+        
+        // Final Verification (State is now the primary source of truth)
+        if (astPassed && statePassed && outPassed) {
             // SUCCESS!
             this.activeTerminal.isRepaired = true;
             this.activeTerminal.isSparking = false;

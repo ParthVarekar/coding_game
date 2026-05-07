@@ -124,6 +124,10 @@ export const Events = {
     AUDIO_PLAY_SFX: 'audio:play_sfx',
     AUDIO_SET_VOLUME: 'audio:set_volume',
 
+    // Map & Level Navigation
+    MAP_TRANSITION: 'map:transition',
+    MAP_CHANGED: 'map:changed',
+
     // Settings
     SETTINGS_CHANGED: 'settings:changed',
 };

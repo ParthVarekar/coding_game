@@ -17,9 +17,10 @@ export class DashboardOverlay {
 
     _bindKeys() {
         window.addEventListener('keydown', (e) => {
-            // Ctrl + Shift + D
-            if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'd') {
+            // Ctrl + Shift + D (Using e.code for hardware key detection)
+            if (e.ctrlKey && e.shiftKey && e.code === 'KeyD') {
                 e.preventDefault();
+                console.log('[Dashboard] Toggle shortcut detected');
                 this.toggle();
             }
         });

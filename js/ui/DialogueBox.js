@@ -28,8 +28,16 @@ export class DialogueBox {
         this.container.addEventListener('click', () => this._advance());
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && this.el.classList.contains('active')) {
-                // Prevent event bubbling if CodeEditor is focused
-                if (document.activeElement && document.activeElement.tagName === 'TEXTAREA') return;
+                // Prevent intercepting Enter if a text input or the editor is focused
+                const isInputFocused = document.activeElement && (
+                    document.activeElement.tagName === 'TEXTAREA' || 
+                    document.activeElement.tagName === 'INPUT' ||
+                    document.activeElement.closest('.cm-editor') ||
+                    document.activeElement.getAttribute('contenteditable') === 'true'
+                );
+                
+                if (isInputFocused) return;
+                
                 this._advance();
             }
         });

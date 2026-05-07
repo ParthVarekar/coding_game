@@ -94,20 +94,20 @@ export class BootScreen {
                     lineEl.style.opacity = '1';
                     this.audio.playSFX('type');
                     charIdx++;
-                    const t = setTimeout(typeChar, 20 + Math.random() * 30);
+                    const t = setTimeout(typeChar, 0);
                     this._timeouts.push(t);
                 } else {
                     lineEl.style.opacity = '1';
                     currentLine++;
                     progressFill.style.width = `${(currentLine / lines.length) * 100}%`;
-                    const t = setTimeout(addLine, 150 + Math.random() * 200);
+                    const t = setTimeout(addLine, 0);
                     this._timeouts.push(t);
                 }
             };
 
             if (line === '') {
                 currentLine++;
-                const t = setTimeout(addLine, 300);
+                const t = setTimeout(addLine, 0);
                 this._timeouts.push(t);
             } else {
                 typeChar();

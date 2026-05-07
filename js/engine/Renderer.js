@@ -41,12 +41,12 @@ export class Renderer {
         window.addEventListener('resize', this._resize);
     }
 
-    async init() {
+    async init(mapData) {
         this._resize();
         
-        // Load prototype map and entities
-        this.map.loadPrototypeMap();
-        this.entities.loadPrototypeEntities();
+        // Load map and entities from data
+        this.map.loadMap(mapData);
+        this.entities.loadEntities(mapData);
         
         // Setup camera
         this.camera.setTarget(this.entities.player);
@@ -123,7 +123,11 @@ export class Renderer {
 
         // Handle interaction input
         if (nearby && (this.input.isJustPressed('e') || this.input.isJustPressed('enter'))) {
-            this.eventBus.emit('INTERACT', { entity: nearby });
+            if (nearby.type === 'portal') {
+                this.eventBus.emit(Events.MAP_TRANSITION, { targetMapId: nearby.targetMapId });
+            } else {
+                this.eventBus.emit('INTERACT', { entity: nearby });
+            }
         }
     }
 

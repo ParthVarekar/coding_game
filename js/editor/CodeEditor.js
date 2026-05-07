@@ -2,8 +2,6 @@
  * CodeEditor — CodeMirror 6 wrapper for the embedded IDE.
  * Provides Python syntax highlighting, custom sci-fi theme,
  * and integration with the code execution pipeline.
- * 
- * Uses a single esm.sh bundle URL to avoid duplicate @codemirror/state instances.
  */
 import { Events } from '../utils/EventBus.js';
 
@@ -15,68 +13,59 @@ export class CodeEditor {
         this.editorView = null;
         this._cmLoaded = false;
         this._modules = {};
+        this._fallbackTextarea = null;
     }
 
     /**
      * Load CodeMirror 6 modules from CDN and initialize the editor.
-     * We use a single esm.sh bundle to prevent duplicate state instances.
+     * Hardened to avoid "Unrecognized extension" errors by forcing dependency sharing.
      */
     async init() {
         if (this._cmLoaded) return;
 
         try {
-            // Use a single bundled import to prevent multiple @codemirror/state instances
-            const cmBundle = await import('https://esm.sh/*codemirror@6.0.1');
-            const cmState = await import('https://esm.sh/*@codemirror/state@6.5.2');
-            const cmPython = await import('https://esm.sh/*@codemirror/lang-python@6.1.6');
-            const cmOneDark = await import('https://esm.sh/*@codemirror/theme-one-dark@6.1.2');
-            const cmView = await import('https://esm.sh/*@codemirror/view@6.36.5');
-            const cmCommands = await import('https://esm.sh/*@codemirror/commands@6.8.1');
+            // Force all modules to share the same instance of @codemirror/state
+            // This is the most robust way to avoid the "multiple instances" error in CM6
+            const baseUrl = 'https://esm.sh/';
+            const deps = '?deps=@codemirror/state@6.5.2';
+            
+            const [state, view, python, theme, commands, cm] = await Promise.all([
+                import(`${baseUrl}@codemirror/state@6.5.2`),
+                import(`${baseUrl}@codemirror/view@6.36.5${deps}`),
+                import(`${baseUrl}@codemirror/lang-python@6.1.6${deps}`),
+                import(`${baseUrl}@codemirror/theme-one-dark@6.1.2${deps}`),
+                import(`${baseUrl}@codemirror/commands@6.8.1${deps}`),
+                import(`${baseUrl}codemirror@6.0.1${deps}`)
+            ]);
 
             this._modules = {
-                EditorView: cmView.EditorView || cmBundle.EditorView,
-                EditorState: cmState.EditorState || cmBundle.EditorState,
-                basicSetup: cmBundle.basicSetup,
-                python: cmPython.python,
-                oneDark: cmOneDark.oneDark,
-                keymap: cmView.keymap,
-                indentWithTab: cmCommands.indentWithTab,
+                EditorView: view.EditorView || view.default?.EditorView,
+                EditorState: state.EditorState || state.default?.EditorState,
+                basicSetup: cm.basicSetup || cm.default?.basicSetup,
+                python: python.python || python.default?.python,
+                oneDark: theme.oneDark || theme.default?.oneDark,
+                keymap: view.keymap || view.default?.keymap,
+                indentWithTab: commands.indentWithTab || commands.default?.indentWithTab,
+                defaultKeymap: commands.defaultKeymap || commands.default?.defaultKeymap || [],
             };
             this._cmLoaded = true;
+            console.log('[CodeEditor] CodeMirror modules loaded successfully.');
         } catch (err) {
-            console.warn('[CodeEditor] Bundled import failed, trying alternative approach:', err.message);
-            // Fallback: load via script tags to guarantee single instances
-            await this._loadViaScriptFallback();
+            console.warn('[CodeEditor] CM6 loading failed, falling back to styled textarea:', err.message);
+            this._cmLoaded = true;
+            this._modules = null;
         }
     }
 
-    /**
-     * Fallback: Create a minimal editor using a textarea if CDN fails.
-     */
-    async _loadViaScriptFallback() {
-        // If CDN imports fail, we'll create a simple but functional textarea-based editor
-        console.log('[CodeEditor] Using textarea fallback editor.');
-        this._cmLoaded = true;
-        this._modules = null; // Signal to use fallback
-    }
-
-    /**
-     * Create the editor instance.
-     * @param {HTMLElement} parentEl
-     * @param {string} initialCode
-     * @param {Function} onRun
-     */
     create(parentEl, initialCode = '# Write your Python code here\n', onRun) {
         if (this._modules === null) {
-            // Fallback: textarea editor
             this._createFallbackEditor(parentEl, initialCode, onRun);
             return;
         }
 
         try {
-            const { EditorView, EditorState, basicSetup, python, oneDark, keymap, indentWithTab } = this._modules;
+            const { EditorView, EditorState, basicSetup, python, oneDark, keymap, indentWithTab, defaultKeymap } = this._modules;
 
-            // Custom Nexus theme overrides
             const nexusTheme = EditorView.theme({
                 '&': {
                     backgroundColor: '#0a0a14',
@@ -99,101 +88,91 @@ export class CodeEditor {
                     backgroundColor: 'rgba(0, 229, 255, 0.04)',
                 },
                 '.cm-gutters': {
-                    backgroundColor: '#06060c',
-                    color: '#4b5563',
-                    border: 'none',
-                    borderRight: '1px solid rgba(0, 229, 255, 0.1)',
-                },
-                '.cm-activeLineGutter': {
-                    backgroundColor: 'rgba(0, 229, 255, 0.08)',
-                    color: '#00e5ff',
-                },
-            });
-
-            // Run keybinding
-            const runKeymap = keymap.of([
-                { key: 'Ctrl-Enter', run: () => { if (onRun) onRun(this.getCode()); return true; } },
-                { key: 'Shift-Enter', run: () => { if (onRun) onRun(this.getCode()); return true; } },
-            ]);
-
-            const extensions = [basicSetup, python(), nexusTheme, EditorView.lineWrapping];
-            
-            // Only add oneDark if it loaded properly
-            if (oneDark) extensions.splice(2, 0, oneDark);
-            
-            // Add keymaps
-            if (indentWithTab) extensions.push(keymap.of([indentWithTab]));
-            extensions.push(runKeymap);
+                    backgroundColor: '#0a0a14',
+                    color: '#5c6370',
+                    borderRight: '1px solid #181a1f',
+                }
+            }, { dark: true });
 
             const state = EditorState.create({
                 doc: initialCode,
-                extensions,
+                extensions: [
+                    basicSetup,
+                    python(),
+                    oneDark,
+                    nexusTheme,
+                    keymap.of([
+                        indentWithTab,
+                        ...defaultKeymap,
+                        {
+                            key: 'Ctrl-Enter',
+                            run: (view) => {
+                                if (onRun) onRun(view.state.doc.toString());
+                                return true;
+                            }
+                        }
+                    ])
+                ]
             });
 
             this.editorView = new EditorView({ state, parent: parentEl });
         } catch (err) {
-            console.warn('[CodeEditor] CodeMirror creation failed, using fallback:', err.message);
+            console.error('[CodeEditor] CodeMirror creation failed:', err.message);
             this._createFallbackEditor(parentEl, initialCode, onRun);
         }
     }
 
-    /**
-     * Fallback textarea editor with Python-like styling.
-     */
     _createFallbackEditor(parentEl, initialCode, onRun) {
-        const wrapper = document.createElement('div');
-        wrapper.style.cssText = 'height:100%;display:flex;flex-direction:column;';
+        // Inject fallback styles if not present
+        if (!document.getElementById('fallback-editor-styles')) {
+            const style = document.createElement('style');
+            style.id = 'fallback-editor-styles';
+            style.textContent = `
+                .fallback-editor { display: flex; background: #0a0a14; color: #e8eaed; font-family: 'JetBrains Mono', monospace; height: 100%; width: 100%; border: 1px solid #181a1f; }
+                .fallback-line-numbers { padding: 10px 5px; background: #0a0a14; color: #5c6370; text-align: right; min-width: 35px; border-right: 1px solid #181a1f; font-size: 13px; line-height: 1.5; user-select: none; }
+                .fallback-textarea { flex: 1; background: transparent; border: none; color: inherit; font-family: inherit; font-size: 14px; padding: 10px; resize: none; outline: none; line-height: 1.5; white-space: pre; overflow: auto; font-variant-ligatures: none; font-feature-settings: "liga" 0; }
+            `;
+            document.head.appendChild(style);
+        }
+
+        const container = document.createElement('div');
+        container.className = 'fallback-editor';
 
         const lineNumbers = document.createElement('div');
         lineNumbers.className = 'fallback-line-numbers';
-        lineNumbers.style.cssText = `
-            position:absolute;left:0;top:0;bottom:0;width:45px;
-            background:#06060c;color:#4b5563;font-family:'JetBrains Mono',monospace;
-            font-size:${this.gameState.data.settings.fontSize}px;
-            line-height:1.6;padding:8px 8px 8px 0;text-align:right;
-            border-right:1px solid rgba(0,229,255,0.1);overflow:hidden;
-            user-select:none;
-        `;
-
+        
         const textarea = document.createElement('textarea');
+        textarea.className = 'fallback-textarea';
         textarea.value = initialCode;
         textarea.spellcheck = false;
-        textarea.style.cssText = `
-            flex:1;width:100%;resize:none;border:none;outline:none;
-            background:#0a0a14;color:#e8eaed;
-            font-family:'JetBrains Mono',monospace;
-            font-size:${this.gameState.data.settings.fontSize}px;
-            line-height:1.6;padding:8px 8px 8px 55px;
-            tab-size:4;white-space:pre;overflow:auto;
-        `;
 
-        // Handle Ctrl+Enter
+        const updateLines = () => {
+            const lines = textarea.value.split('\n').length;
+            lineNumbers.innerHTML = Array.from({length: lines}, (_, i) => i + 1).join('<br>');
+        };
+
+        textarea.addEventListener('input', updateLines);
+        textarea.addEventListener('scroll', () => {
+            lineNumbers.scrollTop = textarea.scrollTop;
+        });
+        
         textarea.addEventListener('keydown', (e) => {
-            if ((e.ctrlKey || e.shiftKey) && e.key === 'Enter') {
-                e.preventDefault();
-                if (onRun) onRun(textarea.value);
-            }
-            // Tab support
             if (e.key === 'Tab') {
                 e.preventDefault();
                 const start = textarea.selectionStart;
-                textarea.value = textarea.value.substring(0, start) + '    ' + textarea.value.substring(textarea.selectionEnd);
+                const end = textarea.selectionEnd;
+                textarea.value = textarea.value.substring(0, start) + '    ' + textarea.value.substring(end);
                 textarea.selectionStart = textarea.selectionEnd = start + 4;
+            }
+            if (e.ctrlKey && e.key === 'Enter') {
+                if (onRun) onRun(textarea.value);
             }
         });
 
-        // Update line numbers
-        const updateLines = () => {
-            const lines = textarea.value.split('\n').length;
-            lineNumbers.textContent = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
-        };
-        textarea.addEventListener('input', updateLines);
-        textarea.addEventListener('scroll', () => { lineNumbers.scrollTop = textarea.scrollTop; });
-
-        wrapper.style.position = 'relative';
-        wrapper.appendChild(lineNumbers);
-        wrapper.appendChild(textarea);
-        parentEl.appendChild(wrapper);
+        container.appendChild(lineNumbers);
+        container.appendChild(textarea);
+        parentEl.innerHTML = ''; // Clear parent
+        parentEl.appendChild(container);
         updateLines();
 
         this._fallbackTextarea = textarea;
@@ -204,24 +183,24 @@ export class CodeEditor {
         return this.editorView ? this.editorView.state.doc.toString() : '';
     }
 
+    focus() {
+        if (this._fallbackTextarea) {
+            this._fallbackTextarea.focus();
+        } else if (this.editorView) {
+            this.editorView.focus();
+        }
+    }
+
     setCode(code) {
         if (this._fallbackTextarea) {
             this._fallbackTextarea.value = code;
+            this._fallbackTextarea.dispatchEvent(new Event('input'));
             return;
         }
-        if (!this.editorView) return;
-        this.editorView.dispatch({
-            changes: { from: 0, to: this.editorView.state.doc.length, insert: code },
-        });
-    }
-
-    focus() {
-        if (this._fallbackTextarea) { this._fallbackTextarea.focus(); return; }
-        if (this.editorView) this.editorView.focus();
-    }
-
-    destroy() {
-        if (this.editorView) { this.editorView.destroy(); this.editorView = null; }
-        this._fallbackTextarea = null;
+        if (this.editorView) {
+            this.editorView.dispatch({
+                changes: { from: 0, to: this.editorView.state.doc.length, insert: code }
+            });
+        }
     }
 }

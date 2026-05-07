@@ -278,32 +278,67 @@ export class BotEntity extends Entity {
     }
 }
 
+export class Portal extends Entity {
+    constructor(x, y, targetMapId) {
+        super(x, y, 64, 64);
+        this.type = 'portal';
+        this.targetMapId = targetMapId;
+    }
+    render(ctx) {
+        ctx.save();
+        ctx.translate(this.x + 32, this.y + 32);
+        
+        // Spinning energy ring
+        const time = Date.now() / 1000;
+        ctx.rotate(time * 2);
+        
+        ctx.strokeStyle = '#a855f7'; // Purple portal
+        ctx.lineWidth = 4;
+        ctx.setLineDash([10, 5]);
+        ctx.strokeRect(-24, -24, 48, 48);
+        
+        ctx.shadowColor = '#a855f7';
+        ctx.shadowBlur = 15;
+        ctx.strokeRect(-16, -16, 32, 32);
+        
+        ctx.restore();
+    }
+}
+
 export class EntityManager {
     constructor() {
-        this.player = new Player(128, 128);
-        this.bot = new BotEntity(128, 128);
-        this.bot.setTarget(this.player);
+        this.player = null;
+        this.bot = null;
         this.interactables = [];
     }
 
-    loadPrototypeEntities() {
-        // Add 3 broken terminals in the map for Phase 6
-        // Map is 20x15, tile size 64.
+    /**
+     * Spawn entities based on JSON map data.
+     */
+    loadEntities(mapData) {
+        this.clear();
         
-        // Terminal 1: Variables
-        this.interactables.push(new Interactable(8 * 64 + 8, 4 * 64 + 8, 'terminal', 'challenge_1'));
+        const start = mapData.playerStart || { x: 128, y: 128 };
+        this.player = new Player(start.x, start.y);
         
-        // Terminal 2: Loops
-        this.interactables.push(new Interactable(12 * 64 + 8, 6 * 64 + 8, 'terminal', 'challenge_2'));
-        
-        // Terminal 3: Conditionals
-        this.interactables.push(new Interactable(4 * 64 + 8, 10 * 64 + 8, 'terminal', 'challenge_3'));
-        
-        // Reset player pos
-        this.player.x = 3 * 64;
-        this.player.y = 3 * 64;
-        this.bot.x = this.player.x - 40;
-        this.bot.y = this.player.y - 40;
+        this.bot = new BotEntity(start.x, start.y);
+        this.bot.setTarget(this.player);
+
+        if (mapData.entities) {
+            mapData.entities.forEach(ent => {
+                if (ent.type === 'terminal') {
+                    this.interactables.push(new Interactable(ent.x, ent.y, ent.type, ent.challengeId));
+                } else if (ent.type === 'portal') {
+                    this.interactables.push(new Portal(ent.x, ent.y, ent.targetMapId));
+                }
+            });
+        }
+    }
+
+    clear() {
+        this.player = null;
+        this.bot = null;
+        this.interactables = [];
     }
 
     update(dt, input, map) {

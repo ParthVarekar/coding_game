@@ -148,6 +148,70 @@ export class GameScreen {
             this._appendConsole('Failed to load code editor: ' + err.message, 'error');
         }
 
+        // Initialize Xterm.js Terminal
+        const consoleEl = this.el.querySelector('#console-output');
+        if (consoleEl) {
+            consoleEl.innerHTML = ''; // Clear custom console
+            
+            // @ts-ignore - Loaded via CDN
+            this.terminal = new window.Terminal({
+                theme: {
+                    background: '#06060c',
+                    foreground: '#00e5ff',
+                    cursor: '#00e5ff',
+                    black: '#000000',
+                    red: '#ff5555',
+                    green: '#50fa7b',
+                    yellow: '#f1fa8c',
+                    blue: '#8be9fd',
+                    magenta: '#ff79c6',
+                    cyan: '#8be9fd',
+                    white: '#bfbfbf',
+                },
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 13,
+                cursorBlink: true,
+                convertEol: true,
+                rows: 10,
+                scrollback: 1000,
+            });
+
+            // @ts-ignore - Loaded via CDN
+            const fitAddon = new window.FitAddon.FitAddon();
+            this.terminal.loadAddon(fitAddon);
+            this.terminal.open(consoleEl);
+            
+            // Adjust fit
+            setTimeout(() => fitAddon.fit(), 100);
+            window.addEventListener('resize', () => fitAddon.fit());
+
+            // Handle Terminal Input (Interactive Mode)
+            let inputLine = "";
+            this.terminal.onData(data => {
+                const char = data;
+                
+                if (char === '\r') { // Enter key
+                    this.terminal.write('\r\n');
+                    if (this.pythonRunner.hasSharedMemory) {
+                        this.pythonRunner.sendInput(inputLine);
+                    } else {
+                        console.warn('Input ignored: Shared memory not active.');
+                    }
+                    inputLine = "";
+                } else if (char === '\u007f') { // Backspace
+                    if (inputLine.length > 0) {
+                        inputLine = inputLine.slice(0, -1);
+                        this.terminal.write('\b \b');
+                    }
+                } else {
+                    inputLine += char;
+                    this.terminal.write(char);
+                }
+            });
+            
+            this.terminal.writeln('\x1b[1;36m[NEXUS-AI CONSOLE v1.0 READY]\x1b[0m');
+        }
+
         // Init Curriculum
         await this.curriculum.init();
 
@@ -172,8 +236,19 @@ export class GameScreen {
 
         // Init Game Renderer
         this.renderer = new Renderer('game-world-container', this.eventBus);
-        await this.renderer.init();
+        
+        // Load map data
+        const mapsResponse = await fetch('data/maps.json');
+        this.mapsData = (await mapsResponse.json()).maps;
+        const currentMap = this.mapsData[0]; // For now, load first map
+        
+        await this.renderer.init(currentMap);
         this.renderer.start();
+
+        // Listen for map transitions
+        this.eventBus.on(Events.MAP_TRANSITION, ({ targetMapId }) => {
+            this._switchMap(targetMapId);
+        });
 
         // Init Narrative Engine
         this.narrativeEngine = new NarrativeEngine(
@@ -188,11 +263,17 @@ export class GameScreen {
 
     _bindEvents() {
         // Run button
-        this.el.querySelector('#btn-run')?.addEventListener('click', () => {
-            this.audio.playSFX('click');
-            const code = this.codeEditor.getCode();
-            this._runCode(code);
-        });
+        const runBtn = this.el.querySelector('#btn-run');
+        if (runBtn) {
+            runBtn.addEventListener('click', () => {
+                console.log('[GameScreen] Run button clicked');
+                this.audio.playSFX('click');
+                const code = this.codeEditor.getCode();
+                this._runCode(code);
+            });
+        } else {
+            console.error('[GameScreen] Run button not found in DOM');
+        }
 
         // Clear console
         this.el.querySelector('#btn-clear-console')?.addEventListener('click', () => {
@@ -259,10 +340,12 @@ export class GameScreen {
 
     async _runCode(code) {
         if (!code.trim()) {
+            this.toast.show('No code to execute', 'warning');
             this._appendConsole('No code to run.', 'warning');
             return;
         }
 
+        this.toast.show('Executing Python...', 'info');
         this._appendConsole('▶ Running...', 'info');
         const runBtn = this.el.querySelector('#btn-run');
         if (runBtn) {
@@ -271,7 +354,25 @@ export class GameScreen {
         }
 
         const codingTime = Date.now() - (this._codingStartTime || Date.now());
-        const result = await this.pythonRunner.run(code);
+        let result;
+        
+        try {
+            result = await this.pythonRunner.run(
+                code,
+                (out) => this._appendConsole(out, 'output'),
+                (err) => this._appendConsole(err, 'error')
+            );
+        } catch (err) {
+            console.error('[GameScreen] Execution error:', err);
+            result = {
+                success: false,
+                output: '',
+                error: 'An unexpected runner error occurred: ' + err.message,
+                errorType: 'runtime',
+                errorLine: null,
+                executionTime: 0
+            };
+        }
 
         if (runBtn) {
             runBtn.disabled = false;
@@ -280,11 +381,7 @@ export class GameScreen {
 
         if (result.success) {
             this.audio.playSFX('success');
-            if (result.output) {
-                this._appendConsole(result.output, 'output');
-            } else {
-                this._appendConsole('✓ Code executed successfully (no output).', 'success');
-            }
+            // Real-time console has already handled output.
             this._appendConsole(`⏱ ${result.executionTime.toFixed(1)}ms`, 'muted');
 
             // Challenge validation is now handled fully by NarrativeEngine,
@@ -307,9 +404,6 @@ export class GameScreen {
         } else {
             this.audio.playSFX('error');
             this._appendConsole(result.error, 'error');
-            if (result.errorLine) {
-                this._appendConsole(`  ↳ Error on line ${result.errorLine}`, 'error-hint');
-            }
 
             // Telemetry
             this.gameState.recordSubmission({
@@ -321,18 +415,47 @@ export class GameScreen {
         }
 
         this._codingStartTime = Date.now();
-        this.eventBus.emit(Events.CODE_SUBMITTED, result);
+        // Let narrative engine process the result
+        this.eventBus.emit(Events.CODE_SUBMITTED, { result, code });
     }
 
     _appendConsole(text, type = 'output') {
-        const output = this.el.querySelector('#console-output');
-        if (!output) return;
+        if (!this.terminal) return;
+        
+        const colors = {
+            'info': '\x1b[1;34m[INFO]\x1b[0m ',
+            'output': '',
+            'error': '\x1b[1;31m[ERROR]\x1b[0m ',
+            'warning': '\x1b[1;33m[WARN]\x1b[0m ',
+            'error-hint': '  \x1b[3;31m↳\x1b[0m '
+        };
 
-        const line = document.createElement('div');
-        line.className = `console-line console-${type}`;
-        line.textContent = text;
-        output.appendChild(line);
-        output.scrollTop = output.scrollHeight;
+        const prefix = colors[type] || '';
+        // Standardize output for Xterm.js
+        const lines = String(text).split('\n');
+        lines.forEach(line => {
+            this.terminal.writeln(prefix + line);
+        });
+    }
+
+    async _switchMap(mapId) {
+        const mapData = this.mapsData.find(m => m.id === mapId);
+        if (!mapData) {
+            this._appendConsole(`[ERROR] Map ${mapId} not found!`, 'error');
+            return;
+        }
+
+        this._appendConsole(`[SYSTEM] Transitioning to: ${mapData.name}`, 'info');
+        
+        // Re-init renderer systems with new data
+        await this.renderer.init(mapData);
+        
+        // Update NarrativeEngine dependencies (Bot Buddy instance has changed)
+        if (this.narrativeEngine) {
+            this.narrativeEngine.bot = this.renderer.entities.bot;
+        }
+
+        this.eventBus.emit(Events.MAP_CHANGED, { mapId });
     }
 
     _updateHUD() {

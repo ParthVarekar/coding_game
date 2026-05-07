@@ -645,6 +645,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 .editor-container .cm-editor {
     height: 100%;
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0;
 }
 
 /* Console container */
@@ -666,6 +668,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
     font-size: 0.82rem;
     line-height: 1.6;
     background: var(--bg-deep);
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0;
 }
 
 /* Console line types */
@@ -808,17 +812,17 @@ input[type="range"]::-webkit-slider-thumb:hover {
    ========================================= */
 .quest-tracker {
     position: absolute;
-    top: 50px;
-    right: 20px;
+    top: 100px;
+    left: 20px;
     background: rgba(10, 10, 20, 0.8);
-    border-right: 2px solid var(--cyan);
+    border-left: 2px solid var(--cyan);
     padding: var(--sp-3) var(--sp-4);
     border-radius: 4px;
     backdrop-filter: blur(4px);
     z-index: 50;
     pointer-events: none;
-    text-align: right;
-    box-shadow: -5px 5px 15px rgba(0, 0, 0, 0.3);
+    text-align: left;
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.3);
 }
 
 .quest-title {

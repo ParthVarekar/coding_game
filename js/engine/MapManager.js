@@ -19,38 +19,13 @@ export class MapManager {
     }
 
     /**
-     * Load a hardcoded map for Phase 3 prototype.
+     * Load a map from JSON data.
+     * @param {Object} mapData - The map object from maps.json
      */
-    loadPrototypeMap() {
-        // Simple 20x15 room
-        this.width = 20;
-        this.height = 15;
-        this.grid = new Array(this.height).fill(0).map(() => new Array(this.width).fill(this.TILES.FLOOR));
-
-        // Add walls around the perimeter
-        for (let x = 0; x < this.width; x++) {
-            this.grid[0][x] = this.TILES.WALL;
-            this.grid[this.height - 1][x] = this.TILES.WALL;
-        }
-        for (let y = 0; y < this.height; y++) {
-            this.grid[y][0] = this.TILES.WALL;
-            this.grid[y][this.width - 1] = this.TILES.WALL;
-        }
-
-        // Add some interior walls/obstacles
-        this.grid[4][4] = this.TILES.WALL;
-        this.grid[4][5] = this.TILES.WALL;
-        this.grid[5][4] = this.TILES.WALL;
-        
-        this.grid[10][14] = this.TILES.WALL;
-        this.grid[10][15] = this.TILES.WALL;
-        this.grid[11][14] = this.TILES.WALL;
-
-        // Add a hazard area
-        this.grid[7][8] = this.TILES.HAZARD;
-        this.grid[7][9] = this.TILES.HAZARD;
-        this.grid[8][8] = this.TILES.HAZARD;
-        this.grid[8][9] = this.TILES.HAZARD;
+    loadMap(mapData) {
+        this.width = mapData.width;
+        this.height = mapData.height;
+        this.grid = mapData.grid;
     }
 
     getBounds() {
