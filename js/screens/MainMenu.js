@@ -50,8 +50,8 @@ export class MainMenu {
         const hasSave = this.gameState.hasSave();
         return `
             <div class="menu-container">
-                <canvas id="menu-particles" class="menu-particles" aria-hidden="true"></canvas>
-                <div class="menu-content">
+                <canvas id="menu-particles" style="position:absolute;inset:0;z-index:0;pointer-events:none;" aria-hidden="true"></canvas>
+                <div class="menu-content" style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:var(--sp-8);">
                     <h1 class="game-title anim-fade-in">NEXUS-AI</h1>
                     <p class="game-subtitle anim-fade-in">Rebuild the Machine Intelligence</p>
 

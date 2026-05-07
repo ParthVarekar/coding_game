@@ -149,6 +149,19 @@ code, pre { font-family: var(--font-mono); }
     flex-direction: column;
     align-items: center;
     gap: var(--sp-8);
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+}
+
+.menu-footer {
+    margin-top: var(--sp-4);
+}
+.menu-version {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
 }
 
 /* Title */
