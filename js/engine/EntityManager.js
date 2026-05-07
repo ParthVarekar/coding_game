@@ -151,24 +151,126 @@ export class Interactable extends Entity {
     }
 }
 
+export class BotEntity extends Entity {
+    constructor(x, y) {
+        super(x, y, 24, 24);
+        this.target = null;
+        this.color = '#00e5ff'; // Default happy/cyan
+        this.eyeColor = '#fff';
+        this.hoverTime = 0;
+        this.offsetX = -40; // Follow to the top-left of player
+        this.offsetY = -40;
+    }
+
+    setTarget(target) {
+        this.target = target;
+    }
+
+    setEmotion(emotion) {
+        switch (emotion) {
+            case 'happy':
+                this.color = '#00e5ff';
+                this.eyeColor = '#fff';
+                break;
+            case 'thinking':
+                this.color = '#a855f7'; // Purple
+                this.eyeColor = '#fff';
+                break;
+            case 'error':
+                this.color = '#ef4444'; // Red
+                this.eyeColor = '#fff';
+                break;
+        }
+    }
+
+    update(dt) {
+        this.hoverTime += dt * 2;
+
+        if (this.target) {
+            // Determine desired position behind/above player based on player facing
+            let targetOffsetX = this.offsetX;
+            if (this.target.facing === 'left') targetOffsetX = 40;
+            
+            const targetX = this.target.x + targetOffsetX;
+            const targetY = this.target.y + this.offsetY;
+
+            // Lerp towards target position
+            this.x += (targetX - this.x) * 5 * dt;
+            this.y += (targetY - this.y) * 5 * dt;
+        }
+    }
+
+    render(ctx) {
+        ctx.save();
+        
+        const hoverOffset = Math.sin(this.hoverTime) * 5;
+        ctx.translate(this.x + this.width / 2, this.y + this.height / 2 + hoverOffset);
+
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.ellipse(0, 30 - hoverOffset, 8, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bot Body (Sphere)
+        const gradient = ctx.createRadialGradient(-4, -4, 2, 0, 0, 12);
+        gradient.addColorStop(0, '#fff');
+        gradient.addColorStop(0.2, this.color);
+        gradient.addColorStop(1, '#06060c');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, 12, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Eye
+        ctx.fillStyle = this.eyeColor;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(4, -2, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Antenna
+        ctx.strokeStyle = '#4b5563';
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.moveTo(0, -12);
+        ctx.lineTo(0, -18);
+        ctx.stroke();
+        
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(0, -18, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+}
+
 export class EntityManager {
     constructor() {
         this.player = new Player(128, 128);
+        this.bot = new BotEntity(128, 128);
+        this.bot.setTarget(this.player);
         this.interactables = [];
     }
 
     loadPrototypeEntities() {
         // Add a broken terminal in the map
-        // Map is 20x15, tile size 64. Let's put it near the center right
         this.interactables.push(new Interactable(12 * 64 + 8, 6 * 64 + 8, 'terminal', 'challenge_1'));
         
         // Reset player pos
         this.player.x = 3 * 64;
         this.player.y = 3 * 64;
+        this.bot.x = this.player.x - 40;
+        this.bot.y = this.player.y - 40;
     }
 
     update(dt, input, map) {
         this.player.update(dt, input, map);
+        this.bot.update(dt);
         
         for (const ent of this.interactables) {
             ent.update(dt);
@@ -198,7 +300,7 @@ export class EntityManager {
 
     render(ctx, camera) {
         // Sort entities by Y position for proper pseudo-depth layering
-        const renderList = [this.player, ...this.interactables];
+        const renderList = [this.player, this.bot, ...this.interactables];
         renderList.sort((a, b) => (a.y + a.height) - (b.y + b.height));
 
         for (const ent of renderList) {

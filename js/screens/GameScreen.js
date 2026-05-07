@@ -8,6 +8,7 @@ import { Events } from '../utils/EventBus.js';
 import { CodeEditor } from '../editor/CodeEditor.js';
 import { PythonRunner } from '../editor/PythonRunner.js';
 import { Renderer } from '../engine/Renderer.js';
+import { NarrativeEngine } from '../engine/NarrativeEngine.js';
 
 export class GameScreen {
     constructor(container, eventBus, gameState, audioManager, toastManager) {
@@ -20,6 +21,7 @@ export class GameScreen {
         this.codeEditor = new CodeEditor(container, eventBus, gameState);
         this.pythonRunner = new PythonRunner(eventBus);
         this.renderer = null;
+        this.narrativeEngine = null;
         this._codingStartTime = null;
     }
 
@@ -83,8 +85,15 @@ export class GameScreen {
                     <div class="game-world-content" id="game-world-container" style="padding:0; overflow:hidden;">
                         <!-- Canvas will be injected here -->
                     </div>
+                    
+                    <!-- Quest Tracker -->
+                    <div class="quest-tracker" id="quest-tracker">
+                        <div class="quest-title">CURRENT DIRECTIVE</div>
+                        <div class="quest-objective" id="quest-objective">Awaiting orders...</div>
+                    </div>
+
                     <!-- Overlay for interaction prompts -->
-                    <div id="interaction-prompt" style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:var(--cyan); padding:8px 16px; border:1px solid var(--cyan); border-radius:4px; font-family:var(--font-mono); font-size:0.9rem; pointer-events:none; opacity:0; transition:opacity 0.2s;">
+                    <div id="interaction-prompt" style="position:absolute; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:var(--cyan); padding:8px 16px; border:1px solid var(--cyan); border-radius:4px; font-family:var(--font-mono); font-size:0.9rem; pointer-events:none; opacity:0; transition:opacity 0.2s; z-index:50;">
                         Press [E] to Inspect
                     </div>
                 </div>
@@ -160,6 +169,15 @@ export class GameScreen {
         this.renderer = new Renderer('game-world-container', this.eventBus);
         await this.renderer.init();
         this.renderer.start();
+
+        // Init Narrative Engine
+        this.narrativeEngine = new NarrativeEngine(
+            this.eventBus,
+            this.gameState,
+            this.audio,
+            this.el.querySelector('#game-world-panel'),
+            this.renderer.entities.bot
+        );
     }
 
     _bindEvents() {
