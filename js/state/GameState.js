@@ -140,6 +140,9 @@ function createDefaultState() {
 
         // Bot Buddy state
         buddyMood: 'neutral', // neutral, happy, thinking, worried
+
+        // Completed Challenge IDs
+        completedChallenges: []
     };
 }
 
@@ -151,6 +154,35 @@ export class GameState {
         this.eventBus = eventBus;
         this.data = createDefaultState();
         this._saveKey = 'nexus_ai_save';
+
+        // Listen for challenge success
+        this.eventBus.on(Events.CODE_SUCCESS, (data) => {
+            if (data && data.challengeId) {
+                this.completeChallenge(data.challengeId);
+            }
+        });
+
+        this.load();
+    }
+
+    /**
+     * Mark a challenge as completed.
+     * @param {string} id 
+     */
+    completeChallenge(id) {
+        if (!this.data.completedChallenges.includes(id)) {
+            this.data.completedChallenges.push(id);
+            this.save(); // Note: method is named save(), not _save()
+        }
+    }
+
+    /**
+     * Check if a challenge is completed.
+     * @param {string} id 
+     * @returns {boolean}
+     */
+    isChallengeCompleted(id) {
+        return this.data.completedChallenges.includes(id);
     }
 
     // ─── Persistence ──────────────────────────────────────────

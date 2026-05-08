@@ -1,32 +1,51 @@
+NEXUS-AI MASTER SOLUTIONS (16-NODE CURRICULUM)
+==============================================
+
 PHASE 1: THE AWAKENING
 ----------------------
 
-Challenge 1: Biometric Stabilization
-ID: challenge_1_biometrics
-Task: Set variables inside the telemetry dictionary and enable neuro_sync.
+1.1 Biometric Vitals
+ID: challenge_1_1_biometrics
+SOLUTION:
+oxygen_level = 98.5
+heart_rate = 72
 
-FULL SOLUTION:
-telemetry = {
-    'oxygen_level': 95.5,
-    'heart_rate': 82,
-    'neuro_sync': True
-}
+1.2 Neural Pulse
+ID: challenge_1_2_neural_pulse
+SOLUTION:
+motor_a = 45
+motor_b = 55
+total_power = motor_a + motor_b
 
+1.3 Safety Protocols
+ID: challenge_1_3_safety_protocols
+SOLUTION:
+pressure = 120
+if pressure > 100:
+    safety_lock = True
+else:
+    safety_lock = False
 
-Challenge 2 (Boss): Sentinel Drone
+1.4 Repair Kit
+ID: challenge_1_4_repair_kit
+SOLUTION:
+parts = ['wrench', 'solder', 'wire', 'chip', 'cell']
+parts_count = len(parts)
+
+1.5 Cognitive Registry
+ID: challenge_1_5_cognitive_registry
+SOLUTION:
+sectors = {101: 'Archives', 102: 'Reactor'}
+current_location = sectors[101]
+
+1.6 Boss: The Sentinel
 ID: challenge_boss_sentinel
-Task: Use a while loop to surge power ONLY when shields are down.
-
-FULL SOLUTION:
-# We must define the command first
+SOLUTION:
 def surge_command():
     print('SURGING POWER')
     return True
 
-# The sequence of shield fluctuations
-shield_states = ['up', 'up', 'up', 'down', 'up']
-
-# Loop through the states until we find 'down'
+shield_states = ['up', 'up', 'down', 'up']
 while len(shield_states) > 0:
     current = shield_states.pop(0)
     if current == 'down':
@@ -37,39 +56,90 @@ while len(shield_states) > 0:
 PHASE 2: THE CORRUPTED ARCHIVES
 -------------------------------
 
-Challenge 3: Data Venting
-ID: challenge_3_data_venting
-Task: Clean the dataset using pandas fillna/ffill and filter stability.
+2.1 Signal Buffers
+ID: challenge_2_1_signal_buffers
+SOLUTION:
+import numpy as np
+raw_signals = [0.1, 0.4, 0.9, 0.2]
+buffer = np.array(raw_signals)
+buffer_len = len(buffer)
 
-FULL SOLUTION:
+2.2 Vital Vectorization
+ID: challenge_2_2_vital_vectorization
+SOLUTION:
+import numpy as np
+vitals = np.array([36.2, 35.8, 36.5])
+calibrated = vitals + 0.5
+is_calibrated = True
+
+2.3 Buffer Reshaping
+ID: challenge_2_3_buffer_reshaping
+SOLUTION:
+import numpy as np
+flat_log = np.array([1, 0, 1, 0, 1, 1])
+grid = flat_log.reshape(2, 3)
+grid_shape = "2,3"
+
+2.4 The Memory Log
+ID: challenge_2_4_memory_log
+SOLUTION:
 import pandas as pd
 import io
+csv_data = 'id,temp\n1,22\n2,25\n3,19'
+df = pd.read_csv(io.StringIO(csv_data))
+row_count = len(df)
 
-memory_csv = "timestamp,load,stability\n101,0.45,0.9\n102,,0.85\n103,0.72,"
-df = pd.read_csv(io.StringIO(memory_csv))
+2.5 Null Anomalies
+ID: challenge_2_5_null_anomalies
+SOLUTION:
+import pandas as pd
+import numpy as np
+df = pd.DataFrame({'val': [10, np.nan, 30]})
+df = df.fillna(0)
+null_count = df.isnull().sum().sum()
 
-# Step 1 & 2: Fill missing values
-df['load'] = df['load'].fillna(df['load'].mean())
-df['stability'] = df['stability'].ffill()
+2.6 Hazardous Purge
+ID: challenge_2_6_hazardous_purge
+SOLUTION:
+import pandas as pd
+import numpy as np
+df = pd.DataFrame({'id': [1, 2, 3], 'status': ['ok', np.nan, 'ok']})
+df = df.dropna()
+clean_rows = len(df)
 
-# Step 3: Filter
-diana_memory = df[df['stability'] > 0.8]
+2.7 Sector Query
+ID: challenge_2_7_sector_query
+SOLUTION:
+import pandas as pd
+data = {'id': [1,2,3], 'level': ['Low', 'Critical', 'Low']}
+df = pd.DataFrame(data)
+critical_df = df.query("level == 'Critical'")
+critical_count = len(critical_df)
 
+2.8 Cargo Sorting
+ID: challenge_2_8_cargo_sorting
+SOLUTION:
+import pandas as pd
+data = {'sector': ['A', 'A', 'B'], 'weight': [100, 200, 50]}
+df = pd.DataFrame(data)
+grouped = df.groupby('sector').mean()
+group_count = len(grouped)
 
-Challenge 4 (Boss): The Labyrinth Collapse
+2.9 Integrity Audit
+ID: challenge_2_9_integrity_audit
+SOLUTION:
+import pandas as pd
+df = pd.DataFrame({'integrity': [88, 92, 45, 12, 99]})
+stats = df.describe()
+has_count = 'count' in stats.index
+
+2.10 Boss: Labyrinth Collapse
 ID: challenge_boss_labyrinth
-Task: Filter structural dataset to find a safe path.
-
-FULL SOLUTION:
+SOLUTION:
 import pandas as pd
-import io
-
-# Simulated structural dataset
-data = "room_id,integrity\n1,45\n2,85\n3,92\n4,12\n5,81"
-rooms = pd.read_csv(io.StringIO(data))
-
-# Filter for integrity > 80
-safe_rooms = rooms[rooms['integrity'] > 80]
-safe_route = safe_rooms['room_id'].tolist()
-
-print(f"SAFE ROUTE: {safe_route}")
+import numpy as np
+data = {'id': [1, 2, 3, 4], 'integrity': [85, np.nan, 92, 40]}
+df = pd.DataFrame(data)
+df = df.fillna(0)
+safe_path = df[df['integrity'] > 80]['id'].tolist()
+path_len = len(safe_path)

@@ -168,6 +168,9 @@ export class NarrativeEngine {
             this.gameState.addXP(100, `${this.activeChallenge.title} Completed`);
             this.gameState.addMegajoules(50);
             
+            // Emit success event with ID for state persistence
+            this.eventBus.emit(Events.CODE_SUCCESS, { challengeId: this.activeChallenge.id });
+
             this.activeChallenge = null;
             this.activeTerminal = null;
 

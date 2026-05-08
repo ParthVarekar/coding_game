@@ -41,12 +41,12 @@ export class Renderer {
         window.addEventListener('resize', this._resize);
     }
 
-    async init(mapData) {
+    async init(mapData, gameState) {
         this._resize();
         
         // Load map and entities from data
         this.map.loadMap(mapData);
-        this.entities.loadEntities(mapData);
+        this.entities.loadEntities(mapData, gameState);
         
         // Setup camera
         this.camera.setTarget(this.entities.player);
@@ -124,7 +124,10 @@ export class Renderer {
         // Handle interaction input
         if (nearby && (this.input.isJustPressed('e') || this.input.isJustPressed('enter'))) {
             if (nearby.type === 'portal') {
-                if (this.entities.areAllTerminalsRepaired()) {
+                const isReversePortal = nearby.color === '#a855f7';
+                const allRepaired = this.entities.areAllTerminalsRepaired();
+
+                if (isReversePortal || allRepaired) {
                     this.eventBus.emit(Events.MAP_TRANSITION, { targetMapId: nearby.targetMapId });
                 } else {
                     this.eventBus.emit('SHOW_PROMPT', { 

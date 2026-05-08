@@ -242,7 +242,7 @@ export class GameScreen {
         this.mapsData = (await mapsResponse.json()).maps;
         const currentMap = this.mapsData[0]; // For now, load first map
         
-        await this.renderer.init(currentMap);
+        await this.renderer.init(currentMap, this.gameState);
         this.renderer.start();
 
         // Listen for map transitions
@@ -448,7 +448,7 @@ export class GameScreen {
         this._appendConsole(`[SYSTEM] Transitioning to: ${mapData.name}`, 'info');
         
         // Re-init renderer systems with new data
-        await this.renderer.init(mapData);
+        await this.renderer.init(mapData, this.gameState);
         
         // Update NarrativeEngine dependencies (Bot Buddy instance has changed)
         if (this.narrativeEngine) {

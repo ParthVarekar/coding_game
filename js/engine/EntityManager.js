@@ -279,10 +279,11 @@ export class BotEntity extends Entity {
 }
 
 export class Portal extends Entity {
-    constructor(x, y, targetMapId) {
+    constructor(x, y, targetMapId, color = '#00e5ff') {
         super(x, y, 64, 64);
         this.type = 'portal';
         this.targetMapId = targetMapId;
+        this.color = color;
     }
     render(ctx) {
         ctx.save();
@@ -292,12 +293,12 @@ export class Portal extends Entity {
         const time = Date.now() / 1000;
         ctx.rotate(time * 2);
         
-        ctx.strokeStyle = '#a855f7'; // Purple portal
+        ctx.strokeStyle = this.color;
         ctx.lineWidth = 4;
         ctx.setLineDash([10, 5]);
         ctx.strokeRect(-24, -24, 48, 48);
         
-        ctx.shadowColor = '#a855f7';
+        ctx.shadowColor = this.color;
         ctx.shadowBlur = 15;
         ctx.strokeRect(-16, -16, 32, 32);
         
@@ -315,7 +316,7 @@ export class EntityManager {
     /**
      * Spawn entities based on JSON map data.
      */
-    loadEntities(mapData) {
+    loadEntities(mapData, gameState) {
         this.clear();
         
         const start = mapData.playerStart || { x: 128, y: 128 };
@@ -327,9 +328,17 @@ export class EntityManager {
         if (mapData.entities) {
             mapData.entities.forEach(ent => {
                 if (ent.type === 'terminal') {
-                    this.interactables.push(new Interactable(ent.x, ent.y, ent.type, ent.challengeId));
+                    const terminal = new Interactable(ent.x, ent.y, ent.type, ent.challengeId);
+                    
+                    // Restore state if completed
+                    if (gameState && gameState.isChallengeCompleted && gameState.isChallengeCompleted(ent.challengeId)) {
+                        terminal.isRepaired = true;
+                        terminal.isSparking = false;
+                    }
+                    
+                    this.interactables.push(terminal);
                 } else if (ent.type === 'portal') {
-                    this.interactables.push(new Portal(ent.x, ent.y, ent.targetMapId));
+                    this.interactables.push(new Portal(ent.x, ent.y, ent.targetMapId, ent.color));
                 }
             });
         }
