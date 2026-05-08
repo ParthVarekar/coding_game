@@ -1,11 +1,13 @@
 {
   "maps": [
     {
-      "id": "depot_alpha",
-      "name": "Supply Depot Alpha",
+      "id": "phase_1_awakening",
+      "name": "Sector 1: The Awakening (Outer Hull)",
       "width": 20,
       "height": 15,
       "playerStart": { "x": 128, "y": 128 },
+      "glitch_intensity": 32,
+      "ambient_fog": "stasis_pod_fog",
       "grid": [
         [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
         [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2],
@@ -24,15 +26,14 @@
         [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
       ],
       "entities": [
-        { "type": "terminal", "x": 520, "y": 264, "challengeId": "challenge_1" },
-        { "type": "terminal", "x": 776, "y": 392, "challengeId": "challenge_2" },
-        { "type": "terminal", "x": 264, "y": 648, "challengeId": "challenge_3" },
-        { "type": "portal", "x": 1152, "y": 128, "targetMapId": "data_core" }
+        { "type": "terminal", "x": 256, "y": 128, "challengeId": "challenge_1_biometrics" },
+        { "type": "terminal", "x": 1024, "y": 512, "challengeId": "challenge_boss_sentinel" },
+        { "type": "portal", "x": 1152, "y": 128, "targetMapId": "phase_2_archives" }
       ]
     },
     {
-      "id": "data_core",
-      "name": "Sector 2: The Data Core",
+      "id": "phase_2_archives",
+      "name": "Sector 2: The Corrupted Archives",
       "width": 25,
       "height": 20,
       "playerStart": { "x": 128, "y": 600 },
@@ -59,9 +60,9 @@
         [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]
       ],
       "entities": [
-        { "type": "terminal", "x": 320, "y": 320, "challengeId": "challenge_4" },
-        { "type": "terminal", "x": 1280, "y": 320, "challengeId": "challenge_5" },
-        { "type": "terminal", "x": 800, "y": 1000, "challengeId": "challenge_6" }
+        { "type": "terminal", "x": 320, "y": 320, "challengeId": "challenge_3_data_venting" },
+        { "type": "terminal", "x": 1280, "y": 320, "challengeId": "challenge_boss_labyrinth" },
+        { "type": "portal", "x": 1300, "y": 1000, "targetMapId": "phase_3_industrial" }
       ]
     }
   ]

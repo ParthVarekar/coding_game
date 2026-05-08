@@ -1,25 +1,28 @@
 {
   "challenges": [
     {
-      "id": "challenge_1",
-      "title": "Inventory Variables",
+      "id": "challenge_1_biometrics",
+      "title": "Biometric Stabilization",
       "type": "variables",
       "dialogueIntro": [
-        {"name": "Bot Buddy", "text": "This terminal controls the drone assembly bay.", "portrait": "🤖"},
-        {"name": "Bot Buddy", "text": "It needs to log the depot's resources. Create a variable called 'fusion_cores' and set it to 50.", "portrait": "🤖"}
+        {"name": "Diana", "text": "NEURAL LINK: 0%. STATUS: STASIS.", "portrait": "🤖"},
+        {"name": "Diana", "text": "SYSTEM ERROR: AWAITING BIOMETRIC LINK.", "portrait": "🤖"}
       ],
-      "defaultCode": "# Create the 'fusion_cores' variable below\n# Example: variable_name = value\n\n",
+      "defaultCode": "# Stabilize Diana's chassis.\n# Define oxygen_level (float) and heart_rate (int)\n# Set neuro_sync to True if heart_rate is < 90.\n\ntelemetry = {\n    'oxygen_level': 0.0,\n    'heart_rate': 0,\n    'neuro_sync': False\n}\n\n",
       "validation": {
         "expectedOutput": null,
-        "astRegex": "fusion_cores[ \t]*=[ \t]*50",
+        "astRegex": "(['\"]neuro_sync['\"][ \t]*:[ \t]*True)|(neuro_sync.*=[ \t]*True)",
         "stealthTriggers": {
-          "wrongValue": "fusion_cores[ \t]*=[ \t]*(?!50)[0-9]+",
-          "misspelled": "fusion_core[ \t]*="
+          "wrongType": "oxygen_level.*=.*[0-9]+[^\\.]",
+          "falseSync": "(['\"]neuro_sync['\"][ \t]*:[ \t]*False)|(neuro_sync.*=[ \t]*False)"
         }
       },
       "hints": {
-        "wrongValue": "Check your value! We need exactly 50 fusion cores.",
-        "misspelled": "Almost! Make sure the variable is named exactly 'fusion_cores' with an 's'."
+        "wrongType": "Diana needs the oxygen_level to be a float. Are you missing a decimal?",
+        "falseSync": "Neuro-sync is still False! Check your conditional logic to set it to True when the heart rate is safe."
+      },
+      "canvas_triggers": {
+        "on_success": "stabilize_jitter"
       },
       "visualFeedback": {
         "success": "terminal_green",
@@ -27,23 +30,23 @@
       }
     },
     {
-      "id": "challenge_2",
-      "title": "Power Loops",
+      "id": "challenge_boss_sentinel",
+      "title": "Boss: Sentinel Drone",
       "type": "loops",
       "dialogueIntro": [
-        {"name": "Bot Buddy", "text": "Oh no, the main power loop is broken!", "portrait": "🤖"},
-        {"name": "Bot Buddy", "text": "It needs exactly 10 power units to boot. Can you write a loop that prints exactly 'Power level: 10' at the end?", "portrait": "🤖"}
+        {"name": "Diana", "text": "THREAT DETECTED. SENTINEL DRONE.", "portrait": "🤖"},
+        {"name": "Diana", "text": "RECOMMENDATION: SURGE DOCKING PORT WHEN SHIELD IS DOWN.", "portrait": "🤖"}
       ],
-      "defaultCode": "# The terminal needs exactly 10 power units to reboot.\n# Fix the loop below to run 10 times.\n\npower = 0\nfor i in range(5):\n    power += 1\n    print(f\"Power level: {power}\")\n",
+      "defaultCode": "# The system provides a sequence of shield fluctuations.\nshield_states = ['up', 'up', 'up', 'down', 'up']\n\ndef surge_command():\n    print('SURGING POWER')\n    return True\n\n# Task: Write a while loop to process states until you hit 'down'.\n# Use shield_states.pop(0) to get the next status.\n",
       "validation": {
-        "expectedOutput": "Power level: 10",
-        "astRegex": "range[ \t]*\\([ \t]*10[ \t]*\\)",
+        "expectedOutput": "SURGING POWER",
+        "astRegex": "while.*shield_states",
         "stealthTriggers": {
-          "range5": "range[ \t]*\\([ \t]*5[ \t]*\\)"
+          "infiniteLoop": "while[ \t]+True"
         }
       },
       "hints": {
-        "range5": "Your loop structure is perfect, but look closely at the range! It's only running 5 times instead of 10."
+        "infiniteLoop": "Elias, the power cycle is stuck! We need a breaking condition!"
       },
       "visualFeedback": {
         "success": "terminal_green",
@@ -51,85 +54,50 @@
       }
     },
     {
-      "id": "challenge_3",
-      "title": "Coolant Conditionals",
-      "type": "conditionals",
-      "dialogueIntro": [
-        {"name": "Bot Buddy", "text": "The reactor coolant terminal is locked.", "portrait": "🤖"},
-        {"name": "Bot Buddy", "text": "Write an if/else statement. If reactor_temp is greater than 100, print 'CRITICAL'. Else, print 'STABLE'.", "portrait": "🤖"}
-      ],
-      "defaultCode": "reactor_temp = 150\n\n# Write your if/else statement below:\n\n",
-      "validation": {
-        "expectedOutput": "CRITICAL",
-        "state": {
-          "reactor_temp": ">= 100"
-        },
-        "stealthTriggers": {
-          "wrongCondition": "if[ \t]+reactor_temp[ \t]*<[ \t]*100[ \t]*:"
-        }
-      },
-      "hints": {
-        "wrongCondition": "Check your condition! We need to know if the temp is GREATER than 100."
-      },
-      "visualFeedback": {
-        "success": "terminal_green",
-        "failure": "terminal_spark"
-      }
-    },
-    {
-      "id": "challenge_4",
-      "title": "Data Core: Pandas Cleaning",
+      "id": "challenge_3_data_venting",
+      "title": "Data Venting",
       "type": "data_engineering",
       "dialogueIntro": [
-        {"name": "Bot Buddy", "text": "We've reached the Data Core, but the logs are corrupted.", "portrait": "🤖"},
-        {"name": "Bot Buddy", "text": "Import 'pandas' and use 'df.dropna()' to remove the corrupted null entries from the signal log.", "portrait": "🤖"}
+        {"name": "Diana", "text": "Elias, the atmospheric sensors are corrupted with NaN values.", "portrait": "🤖"},
+        {"name": "Diana", "text": "We need to clean the data so we don't vent the wrong sector.", "portrait": "🤖"}
       ],
-      "defaultCode": "import pandas as pd\nimport io\n\n# Corrupted Signal Data\ncsv_data = \"\"\"timestamp,signal_strength,noise\n10:00,85,0.1\n10:01,,0.2\n10:02,70,\n10:03,90,0.05\"\"\"\n\ndf = pd.read_csv(io.StringIO(csv_data))\n\n# Clean the data below using df.dropna()\n# Then print(df)\n",
+      "defaultCode": "import pandas as pd\nimport io\n\nmemory_csv = \"timestamp,load,stability\\n101,0.45,0.9\\n102,,0.85\\n103,0.72,\"\ndf = pd.read_csv(io.StringIO(memory_csv))\n\n# 1. Fill missing 'load' values with the mean\n# 2. Fill missing 'stability' values using forward fill ('ffill')\n# 3. Filter for stability > 0.8 and save to 'diana_memory'\n\n",
       "validation": {
-        "expectedOutput": "10:03",
-        "state": {
-          "df": "shape_rows == 2"
+        "expectedOutput": null,
+        "validation_script": "assert df.isnull().sum().sum() == 0; assert len(diana_memory) > 0;",
+        "astRegex": "ffill",
+        "stealthTriggers": {
         }
       },
       "hints": {
-        "missingImport": "Don't forget to 'import pandas as pd'!",
-        "cleaning": "Try using df = df.dropna() to remove rows with empty values."
+      },
+      "visualFeedback": {
+        "success": "terminal_green",
+        "failure": "terminal_spark"
       }
     },
     {
-      "id": "challenge_5",
-      "title": "Data Core: System Statistics",
-      "type": "mathematics",
+      "id": "challenge_boss_labyrinth",
+      "title": "Boss: The Labyrinth Collapse",
+      "type": "data_engineering",
       "dialogueIntro": [
-        {"name": "Bot Buddy", "text": "The cooling fans are vibrating out of sync.", "portrait": "🤖"},
-        {"name": "Bot Buddy", "text": "Calculate the average (mean) RPM from the 'fan_speeds' list and store it in a variable called 'avg_rpm'.", "portrait": "🤖"}
+        {"name": "Diana", "text": "Vanguard is purging the sector! We have 3 minutes!", "portrait": "🤖"},
+        {"name": "Diana", "text": "Filter the structural dataset for rooms with integrity > 80 to find a safe path.", "portrait": "🤖"}
       ],
-      "defaultCode": "fan_speeds = [3200, 3150, 3300, 3100, 3250]\n\n# Calculate the mean (average) of the list below\n# avg_rpm = ...\n",
+      "defaultCode": "import pandas as pd\nimport io\n\n# Simulated structural dataset\ndata = \"room_id,integrity\\n1,45\\n2,85\\n3,92\\n4,12\\n5,81\"\nrooms = pd.read_csv(io.StringIO(data))\n\n# Filter for integrity > 80\n# Convert the room_id column to a list and save as 'safe_route'\nsafe_route = []\n\nprint(f\"SAFE ROUTE: {safe_route}\")\n",
       "validation": {
+        "expectedOutput": "SAFE ROUTE: [2, 3, 5]",
         "state": {
-          "avg_rpm": "== 3200"
-        }
+          "safe_route": "2,3,5"
+        },
+        "validation_script": "assert safe_route == [2, 3, 5]"
       },
       "hints": {
-        "math": "To find the average, sum the list and divide by its length: sum(list) / len(list)."
-      }
-    },
-    {
-      "id": "challenge_6",
-      "title": "Data Core: Orbital Alignment",
-      "type": "mathematics",
-      "dialogueIntro": [
-        {"name": "Bot Buddy", "text": "Final Boss! The satellite dish is misaligned.", "portrait": "🤖"},
-        {"name": "Bot Buddy", "text": "We need the dot product of the 'current_vector' and 'target_vector' to calculate the alignment delta.", "portrait": "🤖"}
-      ],
-      "defaultCode": "current_vector = [1, 0, 2]\ntarget_vector = [3, 4, 1]\n\n# Calculate the dot product (a1*b1 + a2*b2 + a3*b3)\n# alignment_delta = ...\n",
-      "validation": {
-        "state": {
-          "alignment_delta": "== 5"
-        }
+        "wrongFilter": "Check the filter condition. We need integrity greater than 80!"
       },
-      "hints": {
-        "dot_product": "Multiply corresponding elements and then add them all together: (1*3) + (0*4) + (2*1)."
+      "visualFeedback": {
+        "success": "terminal_green",
+        "failure": "terminal_spark"
       }
     }
   ]

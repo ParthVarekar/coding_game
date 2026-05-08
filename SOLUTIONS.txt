@@ -1,0 +1,75 @@
+PHASE 1: THE AWAKENING
+----------------------
+
+Challenge 1: Biometric Stabilization
+ID: challenge_1_biometrics
+Task: Set variables inside the telemetry dictionary and enable neuro_sync.
+
+FULL SOLUTION:
+telemetry = {
+    'oxygen_level': 95.5,
+    'heart_rate': 82,
+    'neuro_sync': True
+}
+
+
+Challenge 2 (Boss): Sentinel Drone
+ID: challenge_boss_sentinel
+Task: Use a while loop to surge power ONLY when shields are down.
+
+FULL SOLUTION:
+# We must define the command first
+def surge_command():
+    print('SURGING POWER')
+    return True
+
+# The sequence of shield fluctuations
+shield_states = ['up', 'up', 'up', 'down', 'up']
+
+# Loop through the states until we find 'down'
+while len(shield_states) > 0:
+    current = shield_states.pop(0)
+    if current == 'down':
+        surge_command()
+        break
+
+
+PHASE 2: THE CORRUPTED ARCHIVES
+-------------------------------
+
+Challenge 3: Data Venting
+ID: challenge_3_data_venting
+Task: Clean the dataset using pandas fillna/ffill and filter stability.
+
+FULL SOLUTION:
+import pandas as pd
+import io
+
+memory_csv = "timestamp,load,stability\n101,0.45,0.9\n102,,0.85\n103,0.72,"
+df = pd.read_csv(io.StringIO(memory_csv))
+
+# Step 1 & 2: Fill missing values
+df['load'] = df['load'].fillna(df['load'].mean())
+df['stability'] = df['stability'].ffill()
+
+# Step 3: Filter
+diana_memory = df[df['stability'] > 0.8]
+
+
+Challenge 4 (Boss): The Labyrinth Collapse
+ID: challenge_boss_labyrinth
+Task: Filter structural dataset to find a safe path.
+
+FULL SOLUTION:
+import pandas as pd
+import io
+
+# Simulated structural dataset
+data = "room_id,integrity\n1,45\n2,85\n3,92\n4,12\n5,81"
+rooms = pd.read_csv(io.StringIO(data))
+
+# Filter for integrity > 80
+safe_rooms = rooms[rooms['integrity'] > 80]
+safe_route = safe_rooms['room_id'].tolist()
+
+print(f"SAFE ROUTE: {safe_route}")

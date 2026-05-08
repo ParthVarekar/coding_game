@@ -13,6 +13,7 @@ import { Settings } from './screens/Settings.js';
 import { BootScreen } from './screens/BootScreen.js';
 import { GameScreen } from './screens/GameScreen.js';
 import { DashboardOverlay } from './screens/DashboardOverlay.js';
+import { LevelSelectOverlay } from './screens/LevelSelectOverlay.js';
 
 class NexusApp {
     constructor() {
@@ -50,6 +51,9 @@ class NexusApp {
 
         // Initialize Stealth Assessment Dashboard (Teacher View)
         const dashboard = new DashboardOverlay(document.body, this.gameState);
+
+        // Initialize Level Select Overlay (Dev Tool)
+        const levelSelect = new LevelSelectOverlay(document.body, this.eventBus);
 
         // Start Boot Sequence
         this.eventBus.emit(Events.SCREEN_CHANGE, { screen: 'boot' });
