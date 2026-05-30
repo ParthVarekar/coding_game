@@ -37,7 +37,7 @@ Nexus-AI is built with a focus on performance and minimal dependencies:
 
 Welcome to the Nexus-AI UGC pipeline! Here is how you can create your own coding campaigns.
 
-![The Custom Levels Main Menu](./docs/images/custom_levels_main_menu.png)
+![Creator / User Guide](./docs/images/custom_levels_main_menu.png)
 
 ### 1. Painting the Map
 Open the Level Editor from the main menu. You'll be greeted by the 2D grid builder.
