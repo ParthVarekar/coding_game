@@ -203,4 +203,15 @@ export class CodeEditor {
             });
         }
     }
+
+    destroy() {
+        if (this.editorView) {
+            this.editorView.destroy();
+            this.editorView = null;
+        }
+        if (this._fallbackTextarea) {
+            this._fallbackTextarea.remove();
+            this._fallbackTextarea = null;
+        }
+    }
 }
