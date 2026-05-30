@@ -25,9 +25,21 @@ export class GameScreen {
         this.renderer = null;
         this.narrativeEngine = null;
         this._codingStartTime = null;
+        this.contentSource = 'official';
+        this.isTestMode = false;
+        this.startLevelId = null;
+        this.isActive = false;
     }
 
-    async show() {
+    async show(data = {}) {
+        this.contentSource = data.contentSource || 'official';
+        this.isTestMode = Boolean(data.isTestMode);
+        this.startLevelId = data.startLevelId || null;
+        this.isActive = true;
+        if (data.resetProgress) {
+            this.gameState.data.completedChallenges = [];
+        }
+
         this.el = document.createElement('div');
         this.el.className = 'screen active';
         this.el.id = 'screen-game';
@@ -39,6 +51,7 @@ export class GameScreen {
     }
 
     hide() {
+        this.isActive = false;
         if (this.renderer) this.renderer.destroy();
         if (this.codeEditor) this.codeEditor.destroy();
         if (this.el) {
@@ -72,7 +85,7 @@ export class GameScreen {
                         <span style="color:var(--text-muted);font-size:0.75rem;">MJ</span>
                     </div>
                     <button class="btn" id="btn-menu" style="padding:var(--sp-2) var(--sp-4);font-size:0.8rem;">
-                        <span>☰ Menu</span>
+                        <span>${this.isTestMode ? 'Exit Test' : '☰ Menu'}</span>
                     </button>
                 </div>
             </div>
@@ -147,6 +160,7 @@ export class GameScreen {
         } catch (err) {
             this._appendConsole('Failed to load code editor: ' + err.message, 'error');
         }
+        if (!this._canContinueInit()) return;
 
         // Initialize Xterm.js Terminal
         const consoleEl = this.el.querySelector('#console-output');
@@ -213,7 +227,9 @@ export class GameScreen {
         }
 
         // Init Curriculum
+        this.curriculum = new CurriculumLoader(this.contentSource);
         await this.curriculum.init();
+        if (!this._canContinueInit()) return;
 
         // Init Pyodide
         const statusEl = this.el.querySelector('#pyodide-status');
@@ -233,13 +249,13 @@ export class GameScreen {
             }
             this._appendConsole('Failed to load Python: ' + err.message, 'error');
         }
+        if (!this._canContinueInit() || !document.getElementById('game-world-container')) return;
 
         // Init Game Renderer
         this.renderer = new Renderer('game-world-container', this.eventBus);
         
         // Load map data
-        const mapsResponse = await fetch('data/maps.json');
-        this.mapsData = (await mapsResponse.json()).maps;
+        this.mapsData = await this._loadMapsData();
         const currentMap = this.mapsData[0]; // For now, load first map
         
         await this.renderer.init(currentMap, this.gameState);
@@ -257,8 +273,13 @@ export class GameScreen {
             this.audio,
             this.el.querySelector('#game-world-panel'),
             this.renderer.entities.bot,
-            this.curriculum
+            this.curriculum,
+            currentMap
         );
+    }
+
+    _canContinueInit() {
+        return this.isActive && this.el && this.el.isConnected;
     }
 
     _bindEvents() {
@@ -285,7 +306,7 @@ export class GameScreen {
         // Menu button
         this.el.querySelector('#btn-menu')?.addEventListener('click', () => {
             this.audio.playSFX('click');
-            this.eventBus.emit(Events.SCREEN_CHANGE, { screen: 'mainMenu' });
+            this.eventBus.emit(Events.SCREEN_CHANGE, { screen: this.isTestMode ? 'levelEditor' : 'mainMenu' });
         });
 
         // Resize handle
@@ -438,6 +459,57 @@ export class GameScreen {
         });
     }
 
+    async _loadMapsData() {
+        if (this.contentSource === 'custom') {
+            const campaign = this._loadCustomCampaign();
+            if (campaign.levels?.length) {
+                const maps = campaign.levels
+                    .map((level) => this._mapDataFromCampaignLevel(level))
+                    .filter(Boolean);
+                const startLevelId = this.startLevelId || campaign.entryLevelId || maps[0]?.id;
+                const entry = maps.find((map) => map.id === startLevelId);
+                return entry ? [entry, ...maps.filter((map) => map.id !== entry.id)] : maps;
+            }
+
+            const serialized = localStorage.getItem('nexus_ai_user_maps')
+                || localStorage.getItem('user_maps.json');
+            if (!serialized) throw new Error('No custom maps saved in localStorage');
+            const maps = JSON.parse(serialized).maps || [];
+            const legacyCampaign = JSON.parse(localStorage.getItem('nexus_ai_user_campaign')
+                || localStorage.getItem('user_campaign.json')
+                || '{}');
+            const startMapId = this.startLevelId || legacyCampaign.entryMapId;
+            if (!startMapId) return maps;
+            const entry = maps.find((map) => map.id === startMapId);
+            return entry ? [entry, ...maps.filter((map) => map.id !== startMapId)] : maps;
+        }
+
+        const mapsResponse = await fetch('data/maps.json');
+        return (await mapsResponse.json()).maps;
+    }
+
+    _loadCustomCampaign() {
+        try {
+            const serialized = localStorage.getItem('nexus_ai_user_campaign')
+                || localStorage.getItem('user_campaign.json');
+            return serialized ? JSON.parse(serialized) : { levels: [] };
+        } catch (error) {
+            console.warn('[GameScreen] Failed to read custom campaign:', error);
+            return { levels: [] };
+        }
+    }
+
+    _mapDataFromCampaignLevel(level) {
+        if (!level?.mapData) return null;
+        const botBuddy = level.curriculumData?.botBuddy || level.mapData.botBuddy;
+        return {
+            ...level.mapData,
+            id: level.levelId || level.mapData.id,
+            name: level.levelName || level.mapData.name || level.levelId,
+            botBuddy,
+        };
+    }
+
     async _switchMap(mapId) {
         const mapData = this.mapsData.find(m => m.id === mapId);
         if (!mapData) {
@@ -453,6 +525,7 @@ export class GameScreen {
         // Update NarrativeEngine dependencies (Bot Buddy instance has changed)
         if (this.narrativeEngine) {
             this.narrativeEngine.bot = this.renderer.entities.bot;
+            this.narrativeEngine.setMapData(mapData);
         }
 
         this.eventBus.emit(Events.MAP_CHANGED, { mapId });

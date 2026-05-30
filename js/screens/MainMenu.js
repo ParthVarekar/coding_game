@@ -48,6 +48,7 @@ export class MainMenu {
 
     _buildHTML() {
         const hasSave = this.gameState.hasSave();
+        const hasCustomCampaign = this._hasCustomCampaign();
         return `
             <div class="menu-container">
                 <canvas id="menu-particles" style="position:absolute;inset:0;z-index:0;pointer-events:none;" aria-hidden="true"></canvas>
@@ -64,6 +65,14 @@ export class MainMenu {
                             <span class="btn-icon">↻</span>
                             <span>Continue</span>
                         </button>
+                        <button class="btn" id="btn-level-editor">
+                            <span class="btn-icon">[]</span>
+                            <span>Level Editor</span>
+                        </button>
+                        <button class="btn ${hasCustomCampaign ? '' : 'btn--disabled'}" id="btn-custom-campaign" ${hasCustomCampaign ? '' : 'disabled'}>
+                            <span class="btn-icon">{}</span>
+                            <span>Custom Levels</span>
+                        </button>
                         <button class="btn" id="btn-settings">
                             <span class="btn-icon">⚙</span>
                             <span>Settings</span>
@@ -75,12 +84,119 @@ export class MainMenu {
                     </div>
                 </div>
             </div>
+
+            <div class="editor-modal-backdrop" id="custom-levels-modal" hidden>
+                <div class="editor-modal custom-levels-modal" role="dialog" aria-modal="true" aria-labelledby="custom-levels-title">
+                    <div class="editor-modal-header">
+                        <div>
+                            <span class="level-editor-kicker">Campaign</span>
+                            <h3 id="custom-levels-title">Custom Levels</h3>
+                        </div>
+                        <button class="editor-icon-button" id="custom-levels-close" type="button" aria-label="Close">x</button>
+                    </div>
+                    <div class="custom-levels-list" id="custom-levels-list">
+                        ${this._buildCustomLevelsListHTML()}
+                    </div>
+                </div>
+            </div>
         `;
+    }
+
+    _hasCustomCampaign() {
+        try {
+            const serializedCampaign = localStorage.getItem('nexus_ai_user_campaign')
+                || localStorage.getItem('user_campaign.json');
+            if (serializedCampaign) {
+                const campaign = JSON.parse(serializedCampaign);
+                if (Array.isArray(campaign.levels) && campaign.levels.length) return true;
+            }
+        } catch (error) {
+            console.warn('[MainMenu] Failed to inspect custom campaign:', error);
+        }
+
+        return localStorage.getItem('nexus_ai_user_maps') !== null
+            || localStorage.getItem('user_maps.json') !== null;
+    }
+
+    _readCustomLevels() {
+        try {
+            const serializedCampaign = localStorage.getItem('nexus_ai_user_campaign')
+                || localStorage.getItem('user_campaign.json');
+            if (serializedCampaign) {
+                const campaign = JSON.parse(serializedCampaign);
+                if (Array.isArray(campaign.levels) && campaign.levels.length) {
+                    return campaign.levels.map((level) => ({
+                        levelId: level.levelId,
+                        levelName: level.levelName || level.levelId,
+                        terminalCount: (level.mapData?.entities || []).filter((entity) => entity.type === 'terminal').length,
+                        portalCount: (level.mapData?.entities || []).filter((entity) => entity.type === 'portal').length,
+                    }));
+                }
+            }
+        } catch (error) {
+            console.warn('[MainMenu] Failed to read custom campaign:', error);
+        }
+
+        try {
+            const serializedMaps = localStorage.getItem('nexus_ai_user_maps')
+                || localStorage.getItem('user_maps.json');
+            const maps = serializedMaps ? JSON.parse(serializedMaps).maps || [] : [];
+            return maps.map((map) => ({
+                levelId: map.id,
+                levelName: map.name || map.id,
+                terminalCount: (map.entities || []).filter((entity) => entity.type === 'terminal').length,
+                portalCount: (map.entities || []).filter((entity) => entity.type === 'portal').length,
+            }));
+        } catch (error) {
+            console.warn('[MainMenu] Failed to read custom maps:', error);
+            return [];
+        }
+    }
+
+    _buildCustomLevelsListHTML() {
+        const levels = this._readCustomLevels();
+        if (!levels.length) {
+            return '<span class="custom-asset-empty">No custom levels saved yet.</span>';
+        }
+
+        return levels.map((level) => `
+            <button class="custom-level-row" data-play-custom-level="${this._escapeAttr(level.levelId)}" type="button">
+                <span>${this._escapeHtml(level.levelName)}</span>
+                <code>${this._escapeHtml(level.levelId)}</code>
+                <small>${level.terminalCount} terminals | ${level.portalCount} portals</small>
+            </button>
+        `).join('');
+    }
+
+    _openCustomLevelsModal() {
+        const list = this.el.querySelector('#custom-levels-list');
+        if (list) list.innerHTML = this._buildCustomLevelsListHTML();
+        const modal = this.el.querySelector('#custom-levels-modal');
+        if (modal) modal.hidden = false;
+    }
+
+    _closeCustomLevelsModal() {
+        const modal = this.el.querySelector('#custom-levels-modal');
+        if (modal) modal.hidden = true;
+    }
+
+    _playCustomLevel(levelId) {
+        this.audio.playSFX('click');
+        this.gameState.reset();
+        this.eventBus.emit(Events.SCREEN_CHANGE, {
+            screen: 'game',
+            data: {
+                contentSource: 'custom',
+                startLevelId: levelId,
+            }
+        });
     }
 
     _bindEvents() {
         const newGameBtn = this.el.querySelector('#btn-new-game');
         const continueBtn = this.el.querySelector('#btn-continue');
+        const levelEditorBtn = this.el.querySelector('#btn-level-editor');
+        const customCampaignBtn = this.el.querySelector('#btn-custom-campaign');
         const settingsBtn = this.el.querySelector('#btn-settings');
 
         // Hover SFX for all buttons
@@ -103,10 +219,52 @@ export class MainMenu {
             });
         }
 
+        levelEditorBtn.addEventListener('click', () => {
+            this.audio.playSFX('click');
+            this.eventBus.emit(Events.SCREEN_CHANGE, { screen: 'levelEditor' });
+        });
+
+        if (customCampaignBtn && !customCampaignBtn.disabled) {
+            customCampaignBtn.addEventListener('click', () => {
+                this.audio.playSFX('click');
+                this._openCustomLevelsModal();
+            });
+        }
+
+        this.el.querySelector('#custom-levels-close')?.addEventListener('click', () => {
+            this.audio.playSFX('click');
+            this._closeCustomLevelsModal();
+        });
+
+        this.el.querySelector('#custom-levels-modal')?.addEventListener('click', (event) => {
+            if (event.target.id === 'custom-levels-modal') this._closeCustomLevelsModal();
+        });
+
+        this.el.querySelector('#custom-levels-list')?.addEventListener('click', (event) => {
+            const playButton = event.target.closest('[data-play-custom-level]');
+            if (!playButton) return;
+            this._playCustomLevel(playButton.dataset.playCustomLevel);
+        });
+
         settingsBtn.addEventListener('click', () => {
             this.audio.playSFX('click');
             this.eventBus.emit(Events.SCREEN_CHANGE, { screen: 'settings' });
         });
+    }
+
+    _escapeAttr(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('"', '&quot;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;');
+    }
+
+    _escapeHtml(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;');
     }
 
     _startParticles() {

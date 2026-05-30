@@ -13,12 +13,13 @@ import { Events } from '../utils/EventBus.js';
 import { DialogueBox } from '../ui/DialogueBox.js';
 
 export class NarrativeEngine {
-    constructor(eventBus, gameState, audio, container, botEntity, curriculum) {
+    constructor(eventBus, gameState, audio, container, botEntity, curriculum, mapData = null) {
         this.eventBus = eventBus;
         this.gameState = gameState;
         this.audio = audio;
         this.bot = botEntity;
         this.curriculum = curriculum;
+        this.mapData = mapData;
         
         this.dialogueBox = new DialogueBox(container, audio, eventBus);
         this.questObjectiveEl = container.querySelector('#quest-objective');
@@ -33,6 +34,10 @@ export class NarrativeEngine {
         if (this.questObjectiveEl) {
             this.questObjectiveEl.textContent = text;
         }
+    }
+
+    setMapData(mapData) {
+        this.mapData = mapData;
     }
 
     _bindEvents() {
@@ -178,15 +183,27 @@ export class NarrativeEngine {
             // Ran but didn't pass requirements
             this.activeTerminal.isSparking = true;
             this.bot.setEmotion('thinking');
+            const fallbackHint = this.activeChallenge.hints?.default || "Code ran successfully, but the terminal is still offline. Double-check the requirements!";
             this.dialogueBox.showSequence([
-                { name: 'Bot Buddy', text: "Code ran successfully, but the terminal is still offline. Double-check the requirements!", portrait: '🤖' }
+                { name: 'Bot Buddy', text: fallbackHint, portrait: '🤖' }
             ]).then(() => this.bot.setEmotion('happy'));
         }
     }
 
     _startIntro() {
+        const customBot = this.mapData?.botBuddy;
+        this.bot.setEmotion(customBot?.emotion || 'happy');
+        if (customBot?.greeting) {
+            this.setObjective(this.mapData?.entities?.some(ent => ent.type === 'terminal')
+                ? 'Investigate the terminal'
+                : 'Explore the custom level');
+            this.dialogueBox.showSequence([
+                { name: 'Bot Buddy', text: customBot.greeting, portrait: 'BOT' }
+            ]);
+            return;
+        }
+
         this.setObjective('Investigate the red flashing terminal');
-        this.bot.setEmotion('happy');
         this.dialogueBox.showSequence([
             { name: 'Bot Buddy', text: "Hello, Engineer! I'm your Bot Buddy. Welcome to Supply Depot Alpha.", portrait: '🤖' },
             { name: 'Bot Buddy', text: "The facility's automated systems have gone offline.", portrait: '🤖' },

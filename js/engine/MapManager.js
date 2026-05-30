@@ -8,6 +8,8 @@ export class MapManager {
         this.width = 0;
         this.height = 0;
         this.grid = []; // 2D array of tile IDs
+        this.customAssets = [];
+        this._customAssetImages = new Map();
         
         // Tile types
         this.TILES = {
@@ -25,7 +27,9 @@ export class MapManager {
     loadMap(mapData) {
         this.width = mapData.width;
         this.height = mapData.height;
-        this.grid = mapData.grid;
+        this.grid = this._normalizeGrid(mapData.grid, this.width, this.height);
+        this.customAssets = mapData.customAssets || mapData.assets || [];
+        this._loadCustomAssets();
     }
 
     getBounds() {
@@ -41,7 +45,7 @@ export class MapManager {
         if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
             return this.TILES.WALL; // Treat out of bounds as walls
         }
-        return this.grid[y][x];
+        return this.grid[y]?.[x] ?? this.TILES.EMPTY;
     }
 
     /**
@@ -57,7 +61,7 @@ export class MapManager {
 
         for (let ty = top; ty <= bottom; ty++) {
             for (let tx = left; tx <= right; tx++) {
-                if (this.getTileAt(tx, ty) === this.TILES.WALL) {
+                if (this._isBlockingTile(tx, ty)) {
                     return true;
                 }
             }
@@ -85,6 +89,12 @@ export class MapManager {
                 const py = y * ts;
 
                 switch (tile) {
+                    default:
+                        if (tile >= 100) this._drawCustomTile(ctx, px, py, ts, tile);
+                        break;
+                    case this.TILES.EMPTY:
+                        this._drawVoidEdge(ctx, px, py, ts, x, y);
+                        break;
                     case this.TILES.FLOOR:
                         this._drawFloorTile(ctx, px, py, ts);
                         break;
@@ -97,6 +107,61 @@ export class MapManager {
                 }
             }
         }
+    }
+
+    _normalizeGrid(grid, width, height) {
+        return Array.from({ length: height }, (_, y) => {
+            const sourceRow = Array.isArray(grid?.[y]) ? grid[y] : [];
+            return Array.from({ length: width }, (_, x) => Number(sourceRow[x] ?? this.TILES.EMPTY));
+        });
+    }
+
+    _isBlockingTile(x, y) {
+        const tile = this.getTileAt(x, y);
+        if (tile === this.TILES.WALL) return true;
+        if (tile === this.TILES.EMPTY) return this._hasPlayableNeighbor(x, y);
+        return false;
+    }
+
+    _hasPlayableNeighbor(x, y) {
+        const offsets = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+        return offsets.some(([dx, dy]) => this._isPlayableTile(this.getTileAt(x + dx, y + dy)));
+    }
+
+    _isPlayableTile(tile) {
+        return tile === this.TILES.FLOOR || tile === this.TILES.HAZARD || tile >= 100;
+    }
+
+    _loadCustomAssets() {
+        this._customAssetImages.clear();
+        this.customAssets.forEach((asset) => {
+            if (!asset?.tileId || !asset?.src) return;
+            const image = new Image();
+            image.src = asset.src;
+            this._customAssetImages.set(asset.tileId, image);
+        });
+    }
+
+    _drawCustomTile(ctx, x, y, size, tileId) {
+        const image = this._customAssetImages.get(tileId);
+        if (image?.complete && image.naturalWidth > 0) {
+            ctx.drawImage(image, x, y, size, size);
+            return;
+        }
+
+        this._drawFloorTile(ctx, x, y, size);
+        ctx.fillStyle = 'rgba(168, 85, 247, 0.22)';
+        ctx.fillRect(x + 6, y + 6, size - 12, size - 12);
+    }
+
+    _drawVoidEdge(ctx, x, y, size, cellX, cellY) {
+        if (!this._hasPlayableNeighbor(cellX, cellY)) return;
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.08)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1);
+        ctx.restore();
     }
 
     _drawFloorTile(ctx, x, y, size) {

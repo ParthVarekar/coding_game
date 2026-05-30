@@ -14,6 +14,7 @@ import { BootScreen } from './screens/BootScreen.js';
 import { GameScreen } from './screens/GameScreen.js';
 import { DashboardOverlay } from './screens/DashboardOverlay.js';
 import { LevelSelectOverlay } from './screens/LevelSelectOverlay.js';
+import { LevelEditorScreen } from './screens/LevelEditorScreen.js';
 
 class NexusApp {
     constructor() {
@@ -31,6 +32,7 @@ class NexusApp {
         this.screens.settings = new Settings(this.appContainer, this.eventBus, this.gameState, this.audio);
         this.screens.boot = new BootScreen(this.appContainer, this.eventBus, this.gameState, this.audio);
         this.screens.game = new GameScreen(this.appContainer, this.eventBus, this.gameState, this.audio, this.toast);
+        this.screens.levelEditor = new LevelEditorScreen(this.appContainer, this.eventBus, this.audio);
 
         this._bindEvents();
     }
@@ -55,8 +57,9 @@ class NexusApp {
         // Initialize Level Select Overlay (Dev Tool)
         const levelSelect = new LevelSelectOverlay(document.body, this.eventBus);
 
-        // Start Boot Sequence
-        this.eventBus.emit(Events.SCREEN_CHANGE, { screen: 'boot' });
+        // Start Boot Sequence, with a direct editor entry point for tooling.
+        const initialScreen = window.location.hash.startsWith('#editor') ? 'levelEditor' : 'boot';
+        this.eventBus.emit(Events.SCREEN_CHANGE, { screen: initialScreen });
 
         // Expose for easy testing
         window.toggleTeacherDashboard = () => dashboard.toggle();

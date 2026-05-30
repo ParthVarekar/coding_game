@@ -109,6 +109,14 @@ self.onmessage = async (e) => {
             // We use a Python-side filter to only get basic serializable types
             pyodide.runPython(`
 __nexus_state__ = {k: v for k, v in globals().items() if isinstance(v, (int, float, str, bool, list, dict)) and not k.startswith('__')}
+for __nexus_k__, __nexus_v__ in list(globals().items()):
+    if __nexus_k__.startswith('__'):
+        continue
+    if hasattr(__nexus_v__, 'shape'):
+        try:
+            __nexus_state__[f"{__nexus_k__}_shape"] = ",".join(str(__nexus_dim__) for __nexus_dim__ in tuple(__nexus_v__.shape))
+        except Exception:
+            pass
             `);
             const globals = pyodide.globals.get('__nexus_state__').toJs({ dict_converter: Object.fromEntries });
             

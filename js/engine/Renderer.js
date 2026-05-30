@@ -124,14 +124,17 @@ export class Renderer {
         // Handle interaction input
         if (nearby && (this.input.isJustPressed('e') || this.input.isJustPressed('enter'))) {
             if (nearby.type === 'portal') {
-                const isReversePortal = nearby.color === '#a855f7';
-                const allRepaired = this.entities.areAllTerminalsRepaired();
+                const isReversePortal = nearby.portalKind === 'return' || nearby.color === '#a855f7';
+                const requiredTerminals = nearby.requiredTerminals || [];
+                const requiredCleared = requiredTerminals.length
+                    ? requiredTerminals.every((challengeId) => this.entities.isTerminalRepaired(challengeId))
+                    : this.entities.areAllTerminalsRepaired();
 
-                if (isReversePortal || allRepaired) {
+                if (isReversePortal || requiredCleared) {
                     this.eventBus.emit(Events.MAP_TRANSITION, { targetMapId: nearby.targetMapId });
                 } else {
                     this.eventBus.emit('SHOW_PROMPT', { 
-                        text: "ACCESS DENIED: Restore all terminals in this sector first.",
+                        text: "ACCESS DENIED: Restore linked terminals first.",
                         isError: true 
                     });
                     this.eventBus.emit(Events.AUDIO_PLAY_SFX, 'error');
@@ -144,8 +147,9 @@ export class Renderer {
 
     _render() {
         // Clear background
-        this.ctx.fillStyle = '#06060c';
+        this.ctx.fillStyle = '#03050f';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this._drawVoidBackdrop();
 
         // Apply camera transform
         this.camera.apply(this.ctx);
@@ -163,6 +167,25 @@ export class Renderer {
 
         // Restore camera transform
         this.camera.restore(this.ctx);
+    }
+
+    _drawVoidBackdrop() {
+        const width = this.camera.viewportWidth || this.canvas.width;
+        const height = this.camera.viewportHeight || this.canvas.height;
+        const parallaxX = (this.camera.x || 0) * 0.18;
+        const parallaxY = (this.camera.y || 0) * 0.18;
+
+        this.ctx.save();
+        for (let i = 0; i < 80; i++) {
+            const seedX = (i * 97.31) % 1;
+            const seedY = (i * 53.17) % 1;
+            const x = ((seedX * width * 1.4 - parallaxX) % width + width) % width;
+            const y = ((seedY * height * 1.4 - parallaxY) % height + height) % height;
+            const alpha = 0.08 + ((i * 29) % 7) * 0.025;
+            this.ctx.fillStyle = `rgba(119, 232, 255, ${alpha})`;
+            this.ctx.fillRect(x, y, i % 9 === 0 ? 2 : 1, i % 9 === 0 ? 2 : 1);
+        }
+        this.ctx.restore();
     }
 
     _drawInteractionHighlight(ent) {

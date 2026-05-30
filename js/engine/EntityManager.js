@@ -189,10 +189,18 @@ export class BotEntity extends Entity {
         this.hoverTime = 0;
         this.offsetX = -40; // Follow to the top-left of player
         this.offsetY = -40;
+        this.behavior = 'follow';
     }
 
     setTarget(target) {
         this.target = target;
+    }
+
+    setBehavior(behavior) {
+        this.behavior = behavior || 'follow';
+        if (this.behavior === 'anchor') {
+            this.target = null;
+        }
     }
 
     setEmotion(emotion) {
@@ -215,7 +223,7 @@ export class BotEntity extends Entity {
     update(dt) {
         this.hoverTime += dt * 2;
 
-        if (this.target) {
+        if (this.behavior === 'follow' && this.target) {
             // Determine desired position behind/above player based on player facing
             let targetOffsetX = this.offsetX;
             if (this.target.facing === 'left') targetOffsetX = 40;
@@ -279,11 +287,13 @@ export class BotEntity extends Entity {
 }
 
 export class Portal extends Entity {
-    constructor(x, y, targetMapId, color = '#00e5ff') {
+    constructor(x, y, targetMapId, color = '#00e5ff', requiredTerminals = [], portalKind = 'forward') {
         super(x, y, 64, 64);
         this.type = 'portal';
+        this.portalKind = portalKind;
         this.targetMapId = targetMapId;
-        this.color = color;
+        this.color = color || (portalKind === 'return' ? '#a855f7' : '#00e5ff');
+        this.requiredTerminals = requiredTerminals;
     }
     render(ctx) {
         ctx.save();
@@ -322,8 +332,14 @@ export class EntityManager {
         const start = mapData.playerStart || { x: 128, y: 128 };
         this.player = new Player(start.x, start.y);
         
-        this.bot = new BotEntity(start.x, start.y);
-        this.bot.setTarget(this.player);
+        const botEntityData = (mapData.entities || []).find(ent => ent.type === 'bot');
+        const botConfig = botEntityData?.botConfig || mapData.botBuddy || {};
+        const botX = botEntityData?.x ?? mapData.botBuddy?.x ?? start.x;
+        const botY = botEntityData?.y ?? mapData.botBuddy?.y ?? start.y;
+        this.bot = new BotEntity(botX, botY);
+        this.bot.setEmotion(botConfig.emotion || 'happy');
+        this.bot.setBehavior(botConfig.behavior || 'follow');
+        if (this.bot.behavior === 'follow') this.bot.setTarget(this.player);
 
         if (mapData.entities) {
             mapData.entities.forEach(ent => {
@@ -338,7 +354,15 @@ export class EntityManager {
                     
                     this.interactables.push(terminal);
                 } else if (ent.type === 'portal') {
-                    this.interactables.push(new Portal(ent.x, ent.y, ent.targetMapId, ent.color));
+                    const portalKind = ent.portalKind || ent.portalConfig?.portalKind || (ent.color === '#a855f7' ? 'return' : 'forward');
+                    this.interactables.push(new Portal(
+                        ent.x,
+                        ent.y,
+                        ent.targetMapId || ent.targetLevelId || ent.portalConfig?.targetMapId || ent.portalConfig?.targetLevelId,
+                        ent.color || (portalKind === 'return' ? '#a855f7' : '#00e5ff'),
+                        ent.requiredTerminals || ent.portalConfig?.requiredTerminals || [],
+                        portalKind
+                    ));
                 }
             });
         }
@@ -387,6 +411,11 @@ export class EntityManager {
         const terminals = this.interactables.filter(ent => ent.type === 'terminal');
         if (terminals.length === 0) return true; // No terminals = auto-complete
         return terminals.every(term => term.isRepaired);
+    }
+
+    isTerminalRepaired(challengeId) {
+        const terminal = this.interactables.find(ent => ent.type === 'terminal' && ent.challengeId === challengeId);
+        return Boolean(terminal?.isRepaired);
     }
 
     render(ctx, camera) {
